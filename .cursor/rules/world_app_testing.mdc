@@ -1,0 +1,244 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# World App Testing & MiniKit Development Rules
+
+## **Testing Environment Guidelines**
+
+### **Dual Environment Development Approach**
+- ✅ **Browser testing**: For general development, debugging, UI/UX, and non-MiniKit features  
+- ✅ **World App testing**: Required for ALL MiniKit functionality
+- 🔄 **Use both**: Browser for development iteration, World App for MiniKit validation
+
+**Key Principle**: Use browser testing for general app development and debugging, but understand that MiniKit features will only work in World App.
+
+### **What to Test Where**
+
+```typescript
+// ✅ Browser testing - Good for:
+// - UI components and layouts
+// - General React state management
+// - API calls and data fetching
+// - Form validation and user interactions
+// - Console.log debugging and error tracking
+// - Performance and bundle analysis
+
+// ✅ World App testing - Required for:
+// - MiniKit.commands (verify, pay, walletAuth)
+// - User authentication flow
+// - Payment processing
+// - World ID verification
+// - All MiniKit-specific functionality
+```
+
+### **Expected Behaviors by Environment**
+
+```typescript
+// ✅ Browser mode - Expected behaviors for development
+console.log('MiniKit is not installed - browser mode') // Normal development
+console.log('Skipping MiniKit command - not in World App') // Expected
+// ✅ Still test: UI, state, APIs, forms, navigation
+
+// ✅ World App mode - MiniKit functionality
+console.log('Running inside World App') // MiniKit available
+console.log('MiniKit installed successfully') // Ready for commands
+// ✅ Test: Authentication, payments, verification
+```
+
+## **Development Workflow**
+
+### **Iterative Development Process**
+1. **Browser Development** (Fast iteration):
+   ```bash
+   npm run dev        # Develop on localhost:3000
+   # Test: UI, logic, state, APIs, debugging
+   ```
+
+2. **World App Validation** (MiniKit features):
+   ```bash
+   ngrok http 3000    # Tunnel for World App access
+   # Test: Authentication, payments, MiniKit commands
+   ```
+
+3. **Debug-Friendly Approach**:
+   - ✅ Use browser DevTools for console logs, network inspection, React DevTools
+   - ✅ Add development flags to show/hide MiniKit-dependent features
+   - ✅ Mock MiniKit responses for browser testing when needed
+
+### **Smart Component Design**
+```typescript
+// ✅ DO: Design components to work in both environments
+function AuthButton() {
+  const { isInstalled } = useMiniKit();
+  const [isWorldApp, setIsWorldApp] = useState(false);
+
+  useEffect(() => {
+    setIsWorldApp(MiniKit.isInstalled());
+  }, []);
+
+  if (!isWorldApp) {
+    // Show development-friendly UI in browser
+    return (
+      <div className="p-4 border-2 border-dashed border-gray-400">
+        <p>🔧 Development Mode</p>
+        <p>MiniKit auth available only in World App</p>
+        <button onClick={() => console.log('Mock auth for testing')}>
+          Mock Authentication (Dev)
+        </button>
+      </div>
+    );
+  }
+
+  // Real MiniKit functionality in World App
+  return (
+    <button onClick={handleWalletAuth}>
+      Connect Wallet
+    </button>
+  );
+}
+```
+
+### **Environment Configuration**
+```bash
+# .env.local - Support both environments
+AUTH_URL="https://current-ngrok-url.ngrok-free.app"
+NEXT_PUBLIC_APP_ID="app_from_developer_portal"
+NEXT_PUBLIC_ACTION="your-action-id"
+NEXT_PUBLIC_DEV_MODE="true" # For browser development features
+```
+
+### **Development Tools and Debugging**
+
+#### **Browser Debugging (Recommended for development)**
+- ✅ **Console logs**: Full access to DevTools console
+- ✅ **Network inspection**: Monitor API calls and responses
+- ✅ **React DevTools**: Component state and props inspection
+- ✅ **Performance analysis**: Bundle size and render performance
+- ✅ **Error tracking**: See full stack traces and errors
+
+#### **World App Debugging**
+- ✅ **Eruda console**: Built-in console for World App debugging
+- ✅ **MiniKit events**: Real authentication and payment flows
+- ✅ **Production-like**: Test actual user experience
+
+```typescript
+// ✅ DO: Add helpful development logging
+function SomeComponent() {
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Component mounted');
+      console.log('🔧 Environment:', MiniKit.isInstalled() ? 'World App' : 'Browser');
+    }
+  }, []);
+}
+```
+
+## **MiniKit Integration Best Practices**
+
+### **Development-Friendly Installation**
+```typescript
+// ✅ DO: Handle both environments gracefully
+function CustomMiniKitProvider({ children }: { children: ReactNode }) {
+  const [environment, setEnvironment] = useState<'browser' | 'worldapp' | 'unknown'>('unknown');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const appId = process.env.NEXT_PUBLIC_APP_ID;
+      
+      try {
+        MiniKit.install(appId);
+        
+        if (MiniKit.isInstalled()) {
+          setEnvironment('worldapp');
+          console.log('🌍 Running inside World App');
+        } else {
+          setEnvironment('browser');
+          console.log('🔧 Development mode - Browser environment');
+        }
+      } catch (error) {
+        setEnvironment('browser');
+        console.log('🔧 Development mode - MiniKit unavailable:', error);
+      }
+    }
+  }, []);
+
+  return (
+    <div data-environment={environment}>
+      <MiniKitProvider>{children}</MiniKitProvider>
+    </div>
+  );
+}
+```
+
+## **Troubleshooting Common Issues**
+
+### **URL Mismatch Problems**
+- **Problem**: World App shows "offline" error
+- **Fix**: Update App URL in World App Developer Portal to match current ngrok URL
+
+### **Development vs Production Behavior**
+- **Expected**: Different behavior in browser vs World App
+- **Solution**: Design components to handle both environments
+- **Debug**: Use browser DevTools for general debugging, World App for MiniKit testing
+
+### **Console Log Access**
+- **Browser**: Full DevTools access for debugging
+- **World App**: Use Eruda console (already configured in project)
+- **Tip**: Add environment-specific logging for better debugging
+
+## **Error Patterns and Debugging**
+
+### **Errors to Ignore (Browser Development)**
+```typescript
+// ❌ These are normal in browser development:
+// "MiniKit is not installed" - Expected in browser
+// "getPermissions command is unavailable" - Expected in browser
+// Font/asset 403 errors via ngrok - Not relevant to functionality
+
+// ✅ Focus on these in browser development:
+// React component errors, state management issues, API failures
+// UI/UX problems, performance issues, bundle errors
+```
+
+### **Productive Development Pattern**
+```typescript
+// ✅ DO: Use this pattern for productive development
+function useWorldAppFeature() {
+  const { isInstalled } = useMiniKit();
+  const isWorldApp = isInstalled && MiniKit.isInstalled();
+  
+  return {
+    isWorldApp,
+    canUseMiniKit: isWorldApp,
+    showDevMode: !isWorldApp && process.env.NODE_ENV === 'development'
+  };
+}
+```
+
+## **Success Indicators**
+
+### **Browser Development Success**
+- ✅ App loads and functions without crashes
+- ✅ UI renders correctly across different screen sizes
+- ✅ Non-MiniKit features work as expected
+- ✅ Console shows helpful development information
+- ✅ DevTools provide clear debugging information
+
+### **World App Validation Success**
+- ✅ App loads inside World App without errors
+- ✅ MiniKit reports as installed
+- ✅ Authentication flow works
+- ✅ Payment commands work
+- ✅ Verification commands work
+
+## **Key Reminders**
+
+- **Use browser for rapid development** - UI, logic, debugging, console logs
+- **Validate MiniKit features in World App** - Authentication, payments, verification  
+- **Design for both environments** - Graceful fallbacks and development modes
+- **ngrok URLs change** every restart (unless paid plan)
+- **Always update Developer Portal** when ngrok URL changes
+- **Leverage DevTools fully** for browser development and debugging
+- **Use Eruda console** for World App debugging when needed

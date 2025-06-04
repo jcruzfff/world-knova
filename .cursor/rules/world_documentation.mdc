@@ -1,0 +1,174 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# World Documentation Reference Rule
+
+## **Primary Documentation Sources**
+- **[World Developer Docs Full](https://docs.world.org/llms-full.txt)**: Complete documentation in LLM-optimized format
+- **[Mini Apps Documentation](https://docs.world.org/mini-apps)**: Comprehensive Mini App development guide
+- **[World ID Documentation](https://docs.world.org/world-id)**: Identity verification and proof-of-humanity integration
+- **[World Chain Documentation](https://docs.world.org/world-chain)**: Blockchain integration and smart contract development
+
+## **When to Check Documentation**
+
+### **Always Reference Before:**
+- Implementing World ID verification flows
+- Using MiniKit commands (verify, pay, walletAuth, sendTransaction)
+- Integrating World App UI components
+- Writing smart contracts for World Chain
+- Implementing payment flows with world.pay
+- Setting up push notifications or sharing features
+- Configuring compliance features (age gates, geofencing)
+
+### **Key Integration Points:**
+- **Authentication**: World ID verification patterns and backend validation
+- **Payments**: world.pay implementation with proper confirmation loops
+- **UI/UX**: Mini Apps UI Kit components and World App design standards
+- **Smart Contracts**: World Chain best practices and gas optimization
+- **Security**: Proof validation and anti-sybil mechanisms
+
+## **Documentation Checking Process**
+
+### **Step 1: Search Documentation**
+```typescript
+// ✅ DO: Check docs.world.org/llms-full.txt for comprehensive info
+// ✅ DO: Verify current API signatures and parameters
+// ✅ DO: Confirm latest MiniKit version requirements
+```
+
+### **Step 2: Validate Implementation**
+```typescript
+// ✅ DO: Follow exact code examples from documentation
+// ✅ DO: Use proper error handling patterns shown in docs
+// ✅ DO: Implement security best practices as documented
+
+// ❌ DON'T: Assume API patterns from memory or older examples
+// ❌ DON'T: Skip backend verification steps shown in docs
+```
+
+### **Step 3: Cross-Reference Multiple Sources**
+- Check both specific feature docs and the comprehensive llms-full.txt
+- Verify code examples match current MiniKit versions
+- Confirm compliance requirements haven't changed
+
+## **Critical Areas Requiring Documentation Check**
+
+### **World ID Integration**
+```typescript
+// Always verify current verification levels and action patterns
+const result = await MiniKit.commandsAsync.verify({
+  action: 'knova-market-entry', // Check docs for action naming conventions
+  verification_level: VerificationLevel.Orb, // Confirm available levels
+});
+
+// Backend verification is mandatory - check docs for latest patterns
+const verifyResponse = await fetch('/api/verify-proof', {
+  method: 'POST',
+  body: JSON.stringify({
+    payload: result.finalPayload,
+    action: 'knova-market-entry'
+  })
+});
+```
+
+### **Payment Integration**
+```typescript
+// Verify current token support and minimum amounts
+const paymentResult = await MiniKit.commandsAsync.pay({
+  reference: paymentId,
+  to: VAULT_ADDRESS, // Ensure address whitelisting requirements
+  tokens: [{
+    symbol: Tokens.WLD, // Check current supported tokens
+    token_amount: tokenToDecimals(amount, Tokens.WLD).toString()
+  }],
+  description: 'Market stake' // Verify description requirements
+});
+```
+
+### **UI Components**
+```typescript
+// Use latest UI Kit components as documented
+import { 
+  Button, 
+  LiveFeedback, 
+  Tabs, 
+  TabItem 
+} from '@worldcoin/mini-apps-ui-kit-react';
+
+// Follow current World App design patterns
+<Tabs value={currentTab} onValueChange={setCurrentTab}>
+  <TabItem value="markets" icon={<TrendingUp />} label="Markets" />
+</Tabs>
+```
+
+## **Version and Compatibility Tracking**
+
+### **Always Check:**
+- **MiniKit Version**: Current @worldcoin/minikit-js and @worldcoin/minikit-react versions
+- **API Changes**: Breaking changes in commands or responses
+- **World Chain Updates**: Gas sponsorship limits and contract patterns
+- **Compliance Updates**: Regulatory requirements and geofencing rules
+
+### **Documentation Update Triggers:**
+- Before starting new World-related features
+- When encountering unexpected API behaviors
+- Before major releases or deployments
+- When debugging World integration issues
+
+## **Common Pitfalls to Avoid**
+
+### **❌ Outdated Patterns**
+```typescript
+// DON'T use deprecated WalletConnect patterns
+// DON'T assume old verification response formats
+// DON'T skip required backend validation steps
+```
+
+### **✅ Current Best Practices**
+```typescript
+// DO use latest MiniKit command signatures
+// DO implement proper error handling as documented
+// DO follow security guidelines for proof validation
+```
+
+## **Integration with Development Workflow**
+
+### **Before Implementation:**
+1. Search docs.world.org/llms-full.txt for relevant information
+2. Check specific feature documentation for detailed examples
+3. Verify current API signatures and requirements
+4. Confirm compliance and security requirements
+
+### **During Development:**
+1. Reference documentation for proper error handling
+2. Use exact patterns shown in official examples
+3. Implement all required security validations
+4. Follow World App design system guidelines
+
+### **Before Deployment:**
+1. Verify all World integrations against latest docs
+2. Confirm compliance requirements are met
+3. Test against current World App environment
+4. Validate smart contract patterns are current
+
+## **Quick Reference Links**
+
+- **[MiniKit Commands](https://docs.world.org/mini-apps/commands)**: Complete command reference
+- **[World ID Verification](https://docs.world.org/world-id/integration)**: Implementation guide
+- **[Payment Integration](https://docs.world.org/mini-apps/commands/pay)**: world.pay documentation
+- **[UI Kit Components](https://docs.world.org/mini-apps/design/ui-kit)**: Design system guide
+- **[Developer Portal](https://developer.worldcoin.org)**: Configuration and whitelisting
+
+## **Rule Compliance Checklist**
+
+- [ ] Checked docs.world.org/llms-full.txt for comprehensive information
+- [ ] Verified current API signatures and parameters
+- [ ] Confirmed latest compliance requirements
+- [ ] Followed exact documentation patterns for implementation
+- [ ] Implemented all required security validations
+- [ ] Used current UI Kit components and design patterns
+- [ ] Validated World Chain integration follows latest guidelines
+
+**Remember: When in doubt, always reference the official World documentation. It's updated frequently and contains the most accurate, current information for all World integrations.**

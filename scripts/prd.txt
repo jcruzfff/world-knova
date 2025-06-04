@@ -1,0 +1,482 @@
+<context>
+# Overview  
+Knova is a sybil-resistant, mobile-first prediction market built as a Mini App for World App. It leverages World ID's proof-of-human verification to create fair, one-person-one-prediction markets across Sports, Music/Pop-Culture, and Crypto verticals. Users stake WLD or USDC tokens on outcomes in parimutuel pools, with automatic smart contract distribution of winnings to verified humans only.
+
+The core problem Knova solves is the prevalence of bots, manipulation, and unfair advantages in existing prediction markets. By requiring World ID verification for every prediction, we ensure each market participant is a unique, verified human, creating more authentic and trustworthy prediction communities.
+
+Target users are World App users aged 18+ who enjoy entertainment-focused predictions on sports outcomes, music chart performance, and crypto price movements. The product provides entertainment value while offering potential returns, positioned as "skill-based entertainment" rather than gambling.
+
+# Core Features  
+
+## World ID Gated Entry
+- **What it does**: Every market entry requires World ID verification using world.verify command
+- **Why it's important**: Prevents sybil attacks, ensures one-person-one-prediction fairness, builds trust in market outcomes
+- **How it works**: Users must verify their humanity before accessing any market, with unique action IDs per market to prevent double-participation
+
+## Parimutuel Staking System
+- **What it does**: Users stake WLD/USDC tokens on prediction outcomes in pooled markets with no traditional odds
+- **Why it's important**: Eliminates house edge manipulation, creates fair risk-sharing among participants, auto-calculates payouts based on pool distribution
+- **How it works**: world.pay integration sends stakes to smart contract vault, ERC-1155 shares minted proportionally, winnings distributed automatically upon resolution
+
+## Multi-Category Markets
+- **What it does**: Three focused verticals - Sports (game outcomes), Music/Pop-Culture (chart rankings, award winners), Crypto (price movements, token launches)
+- **Why it's important**: Diverse content keeps users engaged across different interests, avoids political content for legal compliance
+- **How it works**: Category-specific oracle integrations (Sportradar for sports, Billboard for music, Chainlink for crypto)
+
+## Smart Contract Auto-Resolution
+- **What it does**: ERC-1155 market contracts automatically distribute winnings based on oracle resolution without manual intervention
+- **Why it's important**: Eliminates disputes, ensures instant payouts, reduces operational overhead, builds user trust
+- **How it works**: Oracle feeds trigger contract resolution function, winners' shares automatically redeemable for proportional pool winnings
+
+## Social Leaderboards & XP System
+- **What it does**: Track user prediction accuracy across categories, weekly leaderboards, streak bonuses, XP rewards for consistent engagement
+- **Why it's important**: Gamification increases retention, creates competitive social dynamics, rewards skill over luck
+- **How it works**: Backend tracking of win rates, streak calculations, push notifications for achievements, shareable results
+
+## Viral Sharing Mechanics
+- **What it does**: One-tap deep links to active markets, friend invitation systems, social sharing of wins with confetti animations
+- **Why it's important**: Organic growth through network effects, leverages World App's social graph, reduces user acquisition costs
+- **How it works**: MiniKit sharing commands, referral tracking, reward incentives for successful invites
+
+# User Experience  
+
+## User Personas
+
+### Primary: "Entertainment Predictor" (70% of users)
+- Age 18-35, casual sports/music fans
+- Values: Fun, social engagement, small stakes entertainment
+- Behavior: Predicts on familiar topics, shares wins socially, plays weekly
+- Pain points: Wants fair games without manipulation, simple mobile experience
+
+### Secondary: "Skilled Analyst" (20% of users)  
+- Age 25-45, deep domain knowledge in sports/crypto
+- Values: Skill-based competition, higher stakes, accuracy tracking
+- Behavior: Researches outcomes, focuses on specific categories, plays consistently
+- Pain points: Needs transparent odds, wants to showcase expertise
+
+### Tertiary: "Social Participant" (10% of users)
+- Age 18-30, follows friends' activities
+- Values: Social connection, group participation, shared experiences  
+- Behavior: Joins markets friends are in, shares outcomes, casual engagement
+- Pain points: Needs easy onboarding, wants social features
+
+## Key User Flows
+
+### First-Time User Onboarding
+1. **Intro Screen**: "Predict the future with verified humans only"
+2. **How It Works**: Visual explanation of parimutuel pools
+3. **Age Gate**: 18+ verification with country check
+4. **World ID Verification**: "Prove you're human to join"
+5. **Category Selection**: Choose interests (Sports/Music/Crypto)
+6. **First Market**: Guided prediction with small stake ($1-5)
+
+### Core Prediction Flow
+1. **Market Discovery**: Browse featured/trending markets by category
+2. **Market Detail**: View pool stats, outcomes, resolution criteria, timer
+3. **World ID Gate**: Verify for specific market (if not already done)
+4. **Stake Selection**: Choose outcome and stake amount (min $0.10)
+5. **Payment Confirmation**: world.pay flow with transaction preview
+6. **Success State**: Confetti animation, share prompt, portfolio update
+
+### Results & Claiming Flow
+1. **Result Notification**: Push notification when market resolves
+2. **Win Celebration**: Animated win screen with payout calculation
+3. **Claim Winnings**: One-tap claim or auto-distribution
+4. **Share Victory**: Social sharing with outcome details
+5. **Next Market**: Suggested similar predictions
+
+## UI/UX Considerations
+- **Mobile-First Design**: Optimized for one-handed World App usage
+- **Bottom Navigation**: Three tabs (Markets, Portfolio, Leaderboard)
+- **Drawer Modals**: Staking and claim interfaces slide up from bottom
+- **Real-Time Updates**: Live pool stats, countdown timers, instant notifications
+- **World App Design System**: Consistent with Mini Apps UI Kit standards
+- **Haptic Feedback**: Success/error feedback on key actions
+- **Progressive Disclosure**: Simple interface with expert details available on demand
+
+</context>
+<PRD>
+# Technical Architecture  
+
+## System Components
+
+### Frontend (MiniKit-JS + React)
+- **Next.js 15** with TypeScript and Tailwind CSS
+- **@worldcoin/minikit-react** for World App integration hooks
+- **@worldcoin/mini-apps-ui-kit-react** for consistent UI components
+- **Real-time WebSocket** connections for live market updates
+- **PWA capabilities** for offline browsing and push notifications
+
+### Smart Contracts (World Chain)
+- **KnovaMarketFactory**: Deploys individual market contracts, manages creation fees
+- **KnovaMarket (ERC-1155)**: Individual prediction markets with share tokenization
+- **KnovaVault**: Handles stake collection, fee distribution, payout management
+- **KnovaOracle**: Oracle integration contract for automated resolution
+
+### Backend Services (Node.js/TypeScript)
+- **Authentication Service**: World ID proof verification, session management
+- **Market Management**: Market creation, metadata storage, category organization
+- **Oracle Integration**: Data feeds from sports/music/crypto APIs
+- **Payment Processing**: world.pay confirmation, stake tracking
+- **Notification Service**: Push notifications, result announcements
+
+### Data Storage
+- **PostgreSQL**: User profiles, market metadata, transaction history
+- **Redis**: Real-time market data, leaderboard caching, session storage
+- **IPFS**: Market images, resolution evidence, metadata backup
+
+## Data Models
+
+### User Profile
+```typescript
+interface UserProfile {
+  worldId: string;           // World ID commitment hash
+  walletAddress: string;     // Ethereum address from wallet auth
+  username?: string;         // Optional display name
+  preferredCategories: CategoryType[];
+  totalStaked: bigint;
+  totalWinnings: bigint;
+  winRate: number;
+  streak: number;
+  xpPoints: number;
+  createdAt: Date;
+}
+```
+
+### Market Definition
+```typescript
+interface Market {
+  id: string;
+  contractAddress: string;   // ERC-1155 contract
+  title: string;
+  description: string;
+  category: 'sports' | 'music' | 'crypto';
+  outcomes: Outcome[];
+  resolutionCriteria: string;
+  oracleType: 'central' | 'uma' | 'chainlink';
+  createdBy: string;
+  deadline: Date;
+  resolutionDate: Date;
+  status: 'active' | 'locked' | 'resolved' | 'cancelled';
+  totalPool: bigint;
+  creationFee: bigint;
+  resolved: boolean;
+  winningOutcome?: number;
+}
+```
+
+### Stake Record
+```typescript
+interface Stake {
+  id: string;
+  marketId: string;
+  userId: string;
+  outcomeId: number;
+  amount: bigint;
+  token: 'WLD' | 'USDCE';
+  sharesReceived: bigint;
+  transactionHash: string;
+  paymentReference: string;
+  timestamp: Date;
+  claimed: boolean;
+  winnings?: bigint;
+}
+```
+
+## APIs and Integrations
+
+### World App Integration
+- **MiniKit Commands**: verify, pay, walletAuth, sendTransaction
+- **World ID Verification**: Backend proof validation via World ID APIs
+- **Push Notifications**: World App notification system integration
+
+### Oracle Data Sources
+- **Sports**: Sportradar API, TheSportsDB for free tier
+- **Music**: Billboard API, Spotify Charts API
+- **Crypto**: Chainlink Price Feeds, CoinGecko API for alt-coins
+
+### Blockchain Infrastructure
+- **World Chain RPC**: Primary blockchain connection
+- **Contract Deployment**: Factory pattern for gas efficiency
+- **Event Monitoring**: Real-time blockchain event listening
+
+## Infrastructure Requirements
+
+### Hosting & Deployment
+- **Vercel/Netlify**: Frontend deployment with World App domain integration
+- **Railway/Render**: Backend API hosting with auto-scaling
+- **Supabase/PlanetScale**: Managed PostgreSQL with global distribution
+
+### Performance & Scaling
+- **CDN**: Global asset distribution for mobile performance
+- **Caching Strategy**: Redis for hot market data, PostgreSQL for historical
+- **Rate Limiting**: API protection against abuse, DDoS mitigation
+- **Monitoring**: Real-time error tracking, performance metrics
+
+### Security Considerations
+- **World ID Verification**: Server-side proof validation required
+- **Payment Confirmation**: Multi-step verification before stake processing
+- **Smart Contract Security**: Pausable contracts, admin functions, upgrade patterns
+- **Data Protection**: User privacy, GDPR compliance, minimal data collection
+
+# Development Roadmap  
+
+## Phase 1: MVP Foundation (Weeks 1-4)
+**Goal**: Working prediction market with manual resolution
+
+### Core Authentication
+- World ID verification flow with backend validation
+- Wallet authentication for payment address
+- Age and region compliance checking
+- Basic user profile creation
+
+### Market Infrastructure  
+- Market creation interface with 0.3 WLD fee
+- Simple market browsing (list view)
+- Basic market detail pages with countdown timers
+- Static market categories (Sports/Music/Crypto)
+
+### Staking Mechanism
+- world.pay integration for WLD/USDC stakes
+- Backend payment confirmation and recording
+- Basic ERC-1155 smart contract for share tokenization
+- Manual payout calculation and distribution
+
+### Essential UI/UX
+- Mobile-responsive design with World App styling
+- Bottom navigation structure
+- Basic staking flow with confirmation screens
+- Simple portfolio view showing active stakes
+
+## Phase 2: Automated Resolution (Weeks 5-8)
+**Goal**: End-to-end automated market lifecycle
+
+### Smart Contract Enhancement
+- Auto-resolution logic in market contracts
+- Automated payout distribution system
+- Creator fee and protocol fee automation
+- Emergency pause and admin functions
+
+### Oracle Integration
+- Central oracle signer for MVP resolution
+- API integration for sports/music data sources
+- Automated result posting to smart contracts
+- Resolution transparency and audit trails
+
+### Enhanced User Experience
+- Real-time market updates via WebSocket
+- Push notifications for results and claims
+- Animated success/failure states
+- Social sharing functionality for wins
+
+### Market Management
+- Automated market lifecycle management
+- Resolution criteria display and tracking
+- Market validation and approval workflows
+- Creator incentive and reputation systems
+
+## Phase 3: Social & Gamification (Weeks 9-12)
+**Goal**: Viral growth and user retention features
+
+### Leaderboard System
+- Weekly and all-time accuracy tracking
+- Category-specific leaderboards
+- XP points and streak calculations
+- Achievement badges and rewards
+
+### Social Features
+- Friend invitation and referral system
+- Deep link sharing for specific markets
+- Social proof (friends' predictions visibility)
+- Group challenges and competitions
+
+### Advanced Analytics
+- User performance analytics dashboard
+- Market trend analysis and insights
+- Predictive suggestions based on history
+- Category preference learning
+
+### Growth Mechanics
+- Referral rewards and bonus systems
+- Seasonal events and special markets
+- Influencer market creation tools
+- Community-driven market suggestions
+
+## Phase 4: Advanced Features (Weeks 13-16)
+**Goal**: Platform differentiation and advanced functionality
+
+### Decentralized Oracle Integration
+- UMA Optimistic Oracle integration for controversial markets
+- Chainlink price feed integration for crypto markets
+- Multi-oracle consensus for high-stakes markets
+- Community dispute resolution mechanisms
+
+### Advanced Market Types
+- Multi-outcome markets (beyond binary)
+- Time-series predictions (progressive outcomes)
+- Conditional markets (dependent outcomes)
+- Long-term markets (quarterly/yearly predictions)
+
+### Platform Optimization
+- Performance optimization for scale
+- Advanced caching and data strategies
+- Mobile app performance tuning
+- Smart contract gas optimization
+
+### Business Features
+- Sponsored market creation by brands
+- Premium market tiers with higher stakes
+- Creator monetization and revenue sharing
+- Partnership integration (sports teams, artists)
+
+# Logical Dependency Chain
+
+## Foundation Layer (Must Build First)
+1. **Authentication Infrastructure**: World ID + wallet auth backend
+2. **Basic Smart Contracts**: ERC-1155 market contracts with manual resolution
+3. **Payment Processing**: world.pay integration with confirmation loops
+4. **Core Database Models**: Users, markets, stakes schema
+
+## Usable Frontend (Quick Visible Progress)
+5. **Market Browsing Interface**: Simple list/grid of available markets
+6. **Market Detail Pages**: Stakes, outcomes, timer, resolution criteria
+7. **Staking Flow**: World ID gate → amount selection → payment → confirmation
+8. **Portfolio View**: User's active stakes and results
+
+## Automated Systems (Building on Foundation)
+9. **Oracle Integration**: Automated data feeds and resolution posting
+10. **Smart Contract Enhancement**: Auto-resolution and payout distribution
+11. **Real-time Updates**: WebSocket connections for live market data
+12. **Notification System**: Push notifications for results and claims
+
+## Growth Features (Enhancing Core Loop)
+13. **Leaderboards**: Performance tracking and competitive elements
+14. **Social Sharing**: Deep links, friend invitations, win celebrations
+15. **Advanced Analytics**: User insights and prediction recommendations
+16. **Gamification**: XP, streaks, achievements, seasonal events
+
+## Atomic Feature Scoping
+- Each market can function independently (no cross-dependencies)
+- Staking works without social features (core loop complete)
+- Manual resolution allows MVP launch before oracle automation
+- Categories can be added incrementally (sports first, then music/crypto)
+- Social features enhance but don't block core functionality
+
+# Risks and Mitigations  
+
+## Technical Challenges
+
+### Risk: Smart Contract Security Vulnerabilities
+**Impact**: High - Could result in loss of user funds, platform reputation damage
+**Mitigation**: 
+- Comprehensive smart contract audits before mainnet deployment
+- Pausable contract patterns for emergency response
+- Bug bounty program for ongoing security testing
+- Gradual rollout with stake limits during early phases
+
+### Risk: Oracle Manipulation or Failure
+**Impact**: Medium - Incorrect market resolution, user trust issues
+**Mitigation**:
+- Multiple oracle sources for cross-validation
+- Manual override capabilities for disputed resolutions
+- Transparent resolution criteria and evidence posting
+- Progressive decentralization (central → UMA → multi-oracle)
+
+### Risk: World App API Changes or Limitations
+**Impact**: Medium - Core functionality breakage, development delays
+**Mitigation**:
+- Close monitoring of World documentation updates
+- Fallback UI patterns for World App compatibility
+- Direct communication channels with World team
+- Modular architecture allowing API adaptation
+
+## MVP Scoping Challenges
+
+### Risk: Feature Creep Leading to Delayed Launch
+**Impact**: High - Extended time to market, resource burnout
+**Mitigation**:
+- Strict MVP feature definition with manual resolution
+- Phased rollout preventing scope expansion
+- Regular stakeholder reviews to maintain focus
+- Clear success metrics for each phase
+
+### Risk: Insufficient User Engagement at Launch
+**Impact**: Medium - Low liquidity in prediction pools, poor user retention
+**Mitigation**:
+- Curated high-interest markets for launch (major sports events)
+- Influencer partnerships for initial market creation
+- Friend invitation system for network effects
+- Low minimum stakes to encourage experimentation
+
+### Risk: Regulatory Compliance Issues
+**Impact**: High - Platform shutdown, legal complications
+**Mitigation**:
+- "Entertainment only" positioning throughout UI
+- Strict geofencing for restricted jurisdictions
+- Age verification before any monetary interaction
+- Legal review of all market categories and terms
+
+## Resource Constraints
+
+### Risk: Limited Development Team Bandwidth
+**Impact**: Medium - Extended timelines, technical debt accumulation
+**Mitigation**:
+- Clear priority ranking for all features
+- Leveraging World's existing infrastructure (MiniKit, UI Kit)
+- Open source component usage where possible
+- Focused hiring for critical skill gaps
+
+### Risk: Smart Contract Gas Costs on World Chain
+**Impact**: Low-Medium - User experience friction, operational costs
+**Mitigation**:
+- Gas-efficient contract patterns (factory deployment, batch operations)
+- World Chain's sponsored transactions for qualified Mini Apps
+- Progressive stake limits based on gas cost analysis
+- Alternative payment models (protocol covers gas)
+
+# Appendix  
+
+## Research Findings
+
+### Prediction Market Analysis
+- Existing platforms (Polymarket, Augur) struggle with mobile UX
+- Bot manipulation is significant problem in current markets
+- Entertainment-focused markets have higher engagement than political
+- Parimutuel models create more intuitive user understanding than odds-based
+
+### World App Integration Benefits
+- World ID provides unique anti-sybil guarantee
+- Mini App distribution eliminates user acquisition friction
+- world.pay integration simplifies crypto payments for mainstream users
+- Push notification system enables real-time engagement
+
+### Market Category Validation
+- **Sports**: Clear resolution criteria, high user interest, abundant data sources
+- **Music**: Viral potential, younger demographics, predictable data (charts)
+- **Crypto**: High engagement, clear price feeds, World App user overlap
+
+## Technical Specifications
+
+### Smart Contract Gas Estimates
+- Market Creation: ~150,000 gas
+- Stake Transaction: ~80,000 gas  
+- Market Resolution: ~120,000 gas
+- Claim Winnings: ~60,000 gas
+
+### Performance Requirements
+- Market page load: <2 seconds on mobile
+- Real-time update latency: <500ms
+- Payment confirmation: <30 seconds
+- Market resolution: <5 minutes after data availability
+
+### Compliance Requirements
+- GDPR: Minimal data collection, user data export/deletion
+- AML: Transaction monitoring, suspicious activity reporting
+- Age Verification: 18+ enforcement before monetary transactions
+- Geofencing: IP and device location verification for restricted regions
+
+### Integration Dependencies
+- **Required**: World ID, MiniKit-JS, World Chain RPC
+- **External APIs**: Sportradar (sports), Billboard (music), Chainlink (crypto)
+- **Infrastructure**: PostgreSQL, Redis, WebSocket server, Push notification service
+</PRD> 
