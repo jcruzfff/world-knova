@@ -1,0 +1,174 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Component Organization Rules
+
+## **File Structure Requirements**
+
+- **One Primary Component Per File**
+  - Each .tsx file should export one main component as default or named export
+  - File name should match the primary component name (PascalCase)
+  - Example: `MarketDetail.tsx` exports `MarketDetail` component
+
+- **Maximum File Size**
+  - Component files should stay under 300 lines
+  - If a file exceeds 300 lines, break it into smaller components
+  - Extract helper components, utility functions, or type definitions
+
+- **Component Separation**
+  - Extract components that exceed 50 lines into separate files
+  - Create dedicated files for reusable UI components
+  - Keep logic-heavy components isolated for easier testing
+
+## **Directory Organization**
+
+```
+src/components/
+├── Feature/               # Feature-specific components
+│   ├── MainComponent.tsx  # Primary component
+│   ├── SubComponent.tsx   # Supporting components
+│   ├── types.ts           # Feature-specific types
+│   └── index.ts           # Barrel exports
+├── UI/                    # Reusable UI components
+│   ├── Button/
+│   ├── Modal/
+│   └── Form/
+└── Layout/                # Layout components
+    ├── Header/
+    ├── Navigation/
+    └── Page/
+```
+
+## **Component Extraction Guidelines**
+
+- **When to Extract:**
+  - Component is used in multiple places
+  - Component logic exceeds 30 lines
+  - Component has its own state management
+  - Component can be tested independently
+  - File is becoming hard to navigate (>200 lines)
+
+- **How to Extract:**
+  ```typescript
+  // ❌ DON'T: Large embedded components
+  const ParentComponent = () => {
+    const LargeSubComponent = () => {
+      // 50+ lines of JSX and logic
+      return <div>...</div>;
+    };
+    
+    return (
+      <div>
+        <LargeSubComponent />
+      </div>
+    );
+  };
+  
+  // ✅ DO: Separate file for large components
+  // SubComponent.tsx
+  export const SubComponent = () => {
+    // Component logic here
+    return <div>...</div>;
+  };
+  
+  // ParentComponent.tsx
+  import { SubComponent } from './SubComponent';
+  export const ParentComponent = () => {
+    return (
+      <div>
+        <SubComponent />
+      </div>
+    );
+  };
+  ```
+
+## **Import/Export Patterns**
+
+- **Named Exports for Components**
+  ```typescript
+  // ✅ DO: Named exports for clarity
+  export const MarketDetail = ({ market }: MarketDetailProps) => {
+    // Component implementation
+  };
+  
+  // ✅ DO: Barrel exports for feature directories
+  // components/Markets/index.ts
+  export { MarketDetail } from './MarketDetail';
+  export { MarketGrid } from './MarketGrid';
+  export { ResolutionCriteria } from './ResolutionCriteria';
+  ```
+
+- **Type Co-location**
+  ```typescript
+  // ✅ DO: Types in same directory
+  // components/Markets/types.ts
+  export interface MarketDetailProps {
+    market: Market;
+  }
+  
+  // components/Markets/MarketDetail.tsx
+  import type { MarketDetailProps } from './types';
+  ```
+
+## **Performance Considerations**
+
+- **Code Splitting Benefits**
+  - Smaller files load faster during development
+  - Better tree-shaking in production builds
+  - Easier for bundlers to optimize
+  - Reduced memory usage during compilation
+
+- **Lazy Loading**
+  ```typescript
+  // ✅ DO: Lazy load large feature components
+  const MarketDetail = lazy(() => import('./MarketDetail'));
+  
+  // Use with Suspense
+  <Suspense fallback={<Loading />}>
+    <MarketDetail market={market} />
+  </Suspense>
+  ```
+
+## **Testing Benefits**
+
+- **Isolated Testing**
+  ```typescript
+  // ✅ DO: Test components in isolation
+  // ResolutionCriteria.test.tsx
+  import { ResolutionCriteria } from './ResolutionCriteria';
+  
+  test('displays criteria for sports markets', () => {
+    render(<ResolutionCriteria market={sportsMock} />);
+    // Test specific component behavior
+  });
+  ```
+
+## **Examples from Codebase**
+
+- **Good Example**: [`MarketGrid.tsx`](mdc:src/components/Markets/MarketGrid.tsx) - Single responsibility, focused component
+- **Refactored Example**: [`ResolutionCriteria.tsx`](mdc:src/components/Markets/ResolutionCriteria.tsx) - Extracted from large parent component
+- **Refactored Example**: [`OracleInformation.tsx`](mdc:src/components/Markets/OracleInformation.tsx) - Independent, testable component
+
+## **Migration Checklist**
+
+When refactoring large components:
+
+1. **Identify extraction candidates** (50+ lines, reusable logic)
+2. **Create separate files** with descriptive names
+3. **Move imports and dependencies**
+4. **Update parent component imports**
+5. **Test functionality after extraction**
+6. **Update barrel exports if needed**
+
+## **Enforcement**
+
+- File size should stay under 300 lines
+- Components over 50 lines should be in separate files
+- No more than 3 components per file (including sub-components)
+- Use ESLint rules to enforce file size limits where possible
+
+---
+
+**Benefits**: Better performance, easier maintenance, improved testability, clearer code organization, enhanced developer experience.

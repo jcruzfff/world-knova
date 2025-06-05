@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 interface CountdownTimerProps {
   endTime: Date;
   variant?: 'default' | 'featured';
+  compact?: boolean;
 }
 
 interface TimeLeft {
@@ -14,7 +15,7 @@ interface TimeLeft {
   seconds: number;
 }
 
-export const CountdownTimer = ({ endTime, variant = 'default' }: CountdownTimerProps) => {
+export const CountdownTimer = ({ endTime, variant = 'default', compact = false }: CountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isExpired, setIsExpired] = useState(false);
 
@@ -89,6 +90,17 @@ export const CountdownTimer = ({ endTime, variant = 'default' }: CountdownTimerP
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <span className="text-sm font-medium text-gray-600">
+        {timeLeft.days > 0 
+          ? `${timeLeft.days}d ${timeLeft.hours}h`
+          : `${timeLeft.hours}h ${timeLeft.minutes}m`
+        }
+      </span>
     );
   }
 

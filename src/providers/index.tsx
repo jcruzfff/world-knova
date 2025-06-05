@@ -16,6 +16,12 @@ const ProfileCompletionProvider = dynamic(
   { ssr: false },
 );
 
+// Import the MarketProvider
+const MarketProvider = dynamic(
+  () => import('@/providers/MarketProvider').then((c) => c.MarketProvider),
+  { ssr: false },
+);
+
 // Custom MiniKit Provider that handles installation properly
 function CustomMiniKitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -75,6 +81,11 @@ interface ClientProvidersProps {
  * - ProfileCompletionProvider:
  *     - Manages the profile completion drawer state globally.
  *     - Allows any component to trigger the profile completion flow.
+ * 
+ * - MarketProvider:
+ *     - Manages market state including browsing and creation
+ *     - Handles API calls for fetching and creating markets
+ *     - Provides state management for market filters, sorting, and pagination
  *
  * Note: We use a custom session system with cookies instead of NextAuth
  * to avoid conflicts with the World Mini-App authentication flow.
@@ -84,7 +95,9 @@ export const Providers = ({ children }: ClientProvidersProps) => {
     <ErudaProvider>
       <CustomMiniKitProvider>
         <ProfileCompletionProvider>
-          {children}
+          <MarketProvider>
+            {children}
+          </MarketProvider>
         </ProfileCompletionProvider>
       </CustomMiniKitProvider>
     </ErudaProvider>

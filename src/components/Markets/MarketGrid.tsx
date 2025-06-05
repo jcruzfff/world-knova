@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { MarketCard } from './MarketCard';
 import { FeaturedMarketCard } from './FeaturedMarketCard';
 import { MarketCategory } from './CategoryFilter';
+// import { useRealTimeMarkets } from '@/hooks/useRealTimeMarkets'; // TODO: Enable after smart contracts are implemented
 
 // Mock market data - will be replaced with real API data
 const mockMarkets = [
@@ -123,9 +125,30 @@ interface MarketGridProps {
 }
 
 export const MarketGrid = ({ selectedCategory = 'all' }: MarketGridProps) => {
-  const [markets] = useState(mockMarkets);
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+  // TODO: Enable real-time market updates after smart contracts are implemented
+  // const { 
+  //   markets, 
+  //   lastUpdate, 
+  //   isConnected, 
+  //   connectionError 
+  // } = useRealTimeMarkets({ 
+  //   markets: mockMarkets, 
+  //   enabled: true 
+  // });
+
+  // Use static mock data for now
+  const markets = mockMarkets;
+  const lastUpdate = null;
+  const isConnected = false;
+  const connectionError = null;
+
+  const handleMarketClick = (marketId: string) => {
+    router.push(`/markets/${marketId}`);
+  };
 
   // Check screen size on client side
   useEffect(() => {
@@ -152,6 +175,30 @@ export const MarketGrid = ({ selectedCategory = 'all' }: MarketGridProps) => {
 
   return (
     <div className="space-y-4">
+      {/* Real-time Status Indicator */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-sm font-medium text-blue-700">
+                Real-time Updates {isConnected ? 'Active' : 'Simulated'}
+              </span>
+            </div>
+            {lastUpdate && (
+              <span className="text-xs text-blue-600">
+                Last update: {(lastUpdate as Date).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+          {connectionError && (
+            <div className="mt-2 text-xs text-orange-600">
+              {connectionError}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* View Mode Toggle */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-gray-900">
@@ -191,7 +238,10 @@ export const MarketGrid = ({ selectedCategory = 'all' }: MarketGridProps) => {
           <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
             🔥 <span>Featured Market</span>
           </h4>
-          <FeaturedMarketCard market={featuredMarket} />
+          <FeaturedMarketCard 
+            market={featuredMarket} 
+            onClick={() => handleMarketClick(featuredMarket.id)}
+          />
         </div>
       )}
 
@@ -217,6 +267,7 @@ export const MarketGrid = ({ selectedCategory = 'all' }: MarketGridProps) => {
                     <MarketCard 
                       market={market} 
                       variant={isLarge ? 'large' : 'compact'}
+                      onClick={() => handleMarketClick(market.id)}
                     />
                   </div>
                 );
@@ -232,6 +283,7 @@ export const MarketGrid = ({ selectedCategory = 'all' }: MarketGridProps) => {
                   <MarketCard 
                     market={market} 
                     variant="list"
+                    onClick={() => handleMarketClick(market.id)}
                   />
                 </div>
               ))}

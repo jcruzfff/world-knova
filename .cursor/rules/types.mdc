@@ -1,0 +1,283 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Type System Conventions for Knova
+
+**Context**: Knova is a prediction market application built as a World Mini-App. All type definitions should be designed to facilitate easy transformation to smart contract logic when ready to move from mock data to on-chain implementation.
+
+## **Core Type Principles**
+
+- **Use existing application types first**: Always check [market.ts](mdc:src/types/market.ts) and related type files before creating new types
+- **Smart contract ready**: Design all types to easily map to Solidity structs and on-chain data
+- **Consistent naming**: Use camelCase for JavaScript/TypeScript, prepare for snake_case smart contract equivalents
+- **Immutable references**: Use `readonly` for arrays and objects that shouldn't be mutated
+- **Explicit null handling**: Use union types with `null` rather than `undefined` where data might not exist
+
+## **Market-Specific Type Guidelines**
+
+### **Market Entity Types**
+```typescript
+// ✅ DO: Follow existing Market interface structure from market.ts
+interface Market {
+  id: string;                    // Maps to uint256 tokenId on-chain
+  title: string;                 // Store as IPFS hash reference
+  description: string;           // Store as IPFS hash reference
+  category: MarketCategory;      // Maps to enum Category
+  outcomeType: 'binary' | 'multiple'; // Maps to enum OutcomeType
+  options: readonly MarketOption[];     // Maps to struct MarketOption[]
+  // ... other fields following established pattern
+}
+
+// ❌ DON'T: Create inconsistent market types
+interface PredictionMarket {
+  marketId: number;              // Inconsistent with Market.id
+  name: string;                  // Inconsistent with Market.title
+  choices: string[];             // Inconsistent with Market.options
+}
+```
+
+### **User and Creator Types**
+```typescript
+// ✅ DO: Use MarketCreator interface for user references
+interface MarketCreator {
+  id: string;                    // World ID hash for on-chain verification
+  username?: string | null;      // Optional display name
+  displayName?: string | null;   // Human-readable name
+  profilePictureUrl?: string | null; // IPFS hash for profile images
+}
+
+// ✅ DO: Handle nullable user data consistently
+interface UserProfile {
+  worldId: string;               // Required World ID for verification
+  username?: string | null;      // Optional fields are nullable, not undefined
+  isEligible: boolean;           // Required compliance check
+  kycStatus: 'pending' | 'verified' | 'rejected'; // Enum for on-chain status
+}
+```
+
+### **Financial and Stake Types**
+```typescript
+// ✅ DO: Use consistent units for financial data
+interface StakeData {
+  amount: bigint;                // Use bigint for precise token amounts
+  token: string;                 // Contract address of stake token
+  timestamp: Date;               // JavaScript Date for frontend, unix timestamp for contracts
+}
+
+// ✅ DO: Prepare for decimal precision in smart contracts
+interface MarketPool {
+  totalStaked: bigint;           // Total wei/smallest unit amount
+  stakeToken: string;            // ERC20 contract address
+  minStake: bigint;              // Minimum stake in wei
+  maxStake: bigint;              // Maximum stake in wei
+}
+
+// ❌ DON'T: Use floating point for financial data
+interface BadStakeData {
+  amount: number;                // Precision loss risk
+  totalPool: number;             // Rounding errors
+}
+```
+
+### **API Response and Request Types**
+```typescript
+// ✅ DO: Use standardized API response wrapper
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  metadata?: {
+    timestamp: Date;
+    requestId?: string;
+  };
+}
+
+// ✅ DO: Separate request/response types from entity types
+interface CreateMarketRequest {
+  title: string;
+  description: string;
+  category: MarketCategory;
+  options: MarketOptionInput[];  // Different from MarketOption (no IDs)
+  endDate: Date;
+  // ... other creation fields
+}
+
+interface MarketOptionInput {
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  // No id or orderIndex - those are assigned by system
+}
+```
+
+## **State Management Types**
+
+### **Context and Provider Types**
+```typescript
+// ✅ DO: Use discriminated unions for reducer actions
+type MarketAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_MARKETS'; payload: MarketsResponse }
+  | { type: 'SET_ERROR'; payload: string | null };
+
+// ✅ DO: Group related state into logical interfaces
+interface MarketBrowsingState {
+  markets: readonly Market[];    // Immutable array
+  totalCount: number;
+  currentPage: number;
+  isLoading: boolean;
+  error: string | null;         // Null, not undefined
+}
+
+interface MarketCreationState {
+  step: number;
+  totalSteps: number;
+  formData: Partial<CreateMarketRequest>; // Allow partial during form filling
+  isValid: boolean;
+  errors: Record<string, string>;
+}
+```
+
+## **Smart Contract Preparation**
+
+### **Enum Mappings**
+```typescript
+// ✅ DO: Design enums to map directly to Solidity enums
+enum MarketStatus {
+  DRAFT = 'draft',               // uint8(0) in Solidity
+  ACTIVE = 'active',             // uint8(1) in Solidity
+  RESOLVED = 'resolved',         // uint8(2) in Solidity
+  CANCELLED = 'cancelled'        // uint8(3) in Solidity
+}
+
+enum MarketCategory {
+  SPORTS = 'sports',
+  CRYPTO = 'crypto',
+  ENTERTAINMENT = 'entertainment',
+  POLITICS = 'politics',
+  TECHNOLOGY = 'technology',
+  CUSTOM = 'custom'
+}
+```
+
+### **Event and Log Types**
+```typescript
+// ✅ DO: Prepare event types for smart contract events
+interface MarketCreatedEvent {
+  marketId: string;              // uint256 tokenId
+  creator: string;               // address
+  category: MarketCategory;      // uint8 enum
+  endTime: bigint;               // uint256 timestamp
+  blockNumber: bigint;           // For event indexing
+  transactionHash: string;       // For transaction tracking
+}
+
+interface StakePlacedEvent {
+  marketId: string;
+  user: string;                  // address
+  optionIndex: number;           // uint8
+  amount: bigint;                // uint256 wei amount
+  timestamp: bigint;             // uint256 block timestamp
+}
+```
+
+## **Validation and Error Handling**
+
+### **Type Guards and Validation**
+```typescript
+// ✅ DO: Create type guards for runtime validation
+function isValidMarket(obj: any): obj is Market {
+  return (
+    typeof obj.id === 'string' &&
+    typeof obj.title === 'string' &&
+    typeof obj.description === 'string' &&
+    Array.isArray(obj.options) &&
+    obj.options.length >= 2 &&
+    Object.values(MarketCategory).includes(obj.category)
+  );
+}
+
+// ✅ DO: Use branded types for important IDs
+type MarketId = string & { readonly __brand: 'MarketId' };
+type UserId = string & { readonly __brand: 'UserId' };
+type ContractAddress = string & { readonly __brand: 'ContractAddress' };
+
+// ✅ DO: Validate and brand IDs at boundaries
+function validateMarketId(id: string): MarketId {
+  if (!/^market_\d+$/.test(id)) {
+    throw new Error(`Invalid market ID format: ${id}`);
+  }
+  return id as MarketId;
+}
+```
+
+## **Migration and Contract Integration**
+
+### **Contract Interface Preparation**
+```typescript
+// ✅ DO: Design types to match expected contract interfaces
+interface KnovaMarketContract {
+  createMarket(
+    title: string,           // Will be IPFS hash
+    description: string,     // Will be IPFS hash
+    category: number,        // MarketCategory enum value
+    options: string[],       // Array of option titles
+    endTime: bigint,         // Unix timestamp
+    minStake: bigint,        // Minimum stake in wei
+    maxStake: bigint         // Maximum stake in wei
+  ): Promise<{ marketId: bigint }>;
+
+  placeStake(
+    marketId: bigint,
+    optionIndex: number,
+    amount: bigint
+  ): Promise<{ success: boolean }>;
+}
+
+// ✅ DO: Prepare transformation utilities
+class TypeTransformers {
+  static marketToContract(market: CreateMarketRequest): ContractMarketParams {
+    return {
+      title: market.title,
+      description: market.description,
+      category: Object.values(MarketCategory).indexOf(market.category),
+      options: market.options.map(opt => opt.title),
+      endTime: BigInt(Math.floor(market.endDate.getTime() / 1000)),
+      minStake: BigInt(market.minStake || 1),
+      maxStake: BigInt(market.maxStake || 1000)
+    };
+  }
+
+  static contractToMarket(contractData: ContractMarketData): Market {
+    // Transform contract response back to Market interface
+  }
+}
+```
+
+## **File Organization**
+
+- **Core types**: [market.ts](mdc:src/types/market.ts) - All market-related types
+- **User types**: `src/types/user.ts` - User and authentication types
+- **Contract types**: `src/types/contracts.ts` - Smart contract interface types
+- **API types**: `src/types/api.ts` - Request/response types
+- **State types**: Include in provider files alongside implementation
+
+## **Before Adding New Types**
+
+1. **Check existing types**: Review [market.ts](mdc:src/types/market.ts) and related files
+2. **Consider smart contract mapping**: How will this type translate to Solidity?
+3. **Follow naming conventions**: Use established patterns from existing types
+4. **Add validation**: Include type guards for runtime safety
+5. **Document purpose**: Add JSDoc comments explaining the type's role and smart contract mapping
+
+## **Common Anti-Patterns to Avoid**
+
+- **Inconsistent naming**: Don't mix camelCase/snake_case or use different names for the same concept
+- **Floating point for money**: Always use `bigint` for token amounts and stakes
+- **Undefined for optional**: Use `null` for explicitly absent data, reserve `undefined` for uninitialized
+- **Duplicate interfaces**: Reuse existing types rather than creating similar ones
+- **No smart contract consideration**: Every type should have a clear path to on-chain representation
+
+Follow these conventions to ensure type safety, consistency, and smooth smart contract integration when ready to deploy Knova on-chain.
