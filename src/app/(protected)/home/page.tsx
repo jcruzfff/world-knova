@@ -107,11 +107,11 @@ export default async function Home() {
               </div>
               <p className="text-blue-100 mb-4">
                 Hey {user.username}! Explore prediction markets and see how it works. 
-                When you're ready to participate, we'll help you complete your profile.
+                When you&apos;re ready to participate, we&apos;ll help you complete your profile.
               </p>
               <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
                 <div className="text-sm text-blue-100">
-                  💡 Try exploring the markets tab to see what's available!
+                  💡 Try exploring the markets tab to see what&apos;s available!
                 </div>
               </div>
             </div>
@@ -144,11 +144,11 @@ export default async function Home() {
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-2xl">🎉</span>
                 <h2 className="text-lg font-semibold">
-                  You're All Set!
+                  You&apos;re All Set!
                 </h2>
               </div>
               <p className="text-green-100 mb-3">
-                Your profile is complete and you're verified! You can now participate in prediction markets.
+                Your profile is complete and you&apos;re verified! You can now participate in prediction markets.
               </p>
               <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
                 <div className="text-sm text-green-100 space-y-1">
@@ -169,7 +169,7 @@ export default async function Home() {
                 </h2>
               </div>
               <p className="text-yellow-100 mb-3">
-                Your profile is complete and you're verified, but prediction markets are not available in your region due to local regulations.
+                Your profile is complete and you&apos;re verified, but prediction markets are not available in your region due to local regulations.
               </p>
               <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
                 <div className="text-sm text-yellow-100">

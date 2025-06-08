@@ -15,6 +15,7 @@ const categoryColors = {
   sports: 'bg-green-100 text-green-700 border-green-200',
   music: 'bg-purple-100 text-purple-700 border-purple-200',
   crypto: 'bg-orange-100 text-orange-700 border-orange-200',
+  user_generated: 'bg-blue-100 text-blue-700 border-blue-200',
   all: 'bg-blue-100 text-blue-700 border-blue-200'
 };
 
@@ -70,9 +71,10 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
   };
 
   const handleShare = async () => {
+    const displaySubtitle = currentMarket.subtitle || currentMarket.description?.substring(0, 100) + '...' || 'No description';
     const shareData = {
       title: currentMarket.title,
-      text: `Check out this prediction market on Knova: ${currentMarket.subtitle}`,
+      text: `Check out this prediction market on Knova: ${displaySubtitle}`,
       url: window.location.href,
     };
 
@@ -173,21 +175,21 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
 
             {/* Subtitle */}
             <p className="text-gray-600 text-lg mb-6">
-              {currentMarket.subtitle}
+              {currentMarket.subtitle || currentMarket.description?.substring(0, 200) + '...' || 'No description'}
             </p>
 
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-gray-50 rounded-xl">
-                <div className="text-2xl font-bold text-gray-900">{currentMarket.totalVolume}</div>
+                <div className="text-2xl font-bold text-gray-900">${currentMarket.totalPool.toLocaleString()}</div>
                 <div className="text-sm text-gray-500">Total Volume</div>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-xl">
-                <div className="text-2xl font-bold text-gray-900">{currentMarket.totalStakers || 0}</div>
+                <div className="text-2xl font-bold text-gray-900">{currentMarket.participantCount || 0}</div>
                 <div className="text-sm text-gray-500">Participants</div>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-xl">
-                <div className="text-2xl font-bold text-gray-900">{currentMarket.outcomes.length}</div>
+                <div className="text-2xl font-bold text-gray-900">{currentMarket.options.length}</div>
                 <div className="text-sm text-gray-500">Outcomes</div>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-xl">
@@ -208,7 +210,7 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Market Description</h2>
               <p className="text-gray-700 leading-relaxed">
-                {market.description || market.subtitle}
+                {market.description || (market.subtitle || 'No description available')}
               </p>
               
               {/* Tags */}
@@ -285,24 +287,24 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
               <h2 className="text-xl font-bold text-gray-900 mb-4">Make Prediction</h2>
               
               <div className="space-y-3">
-                {market.outcomes.map((outcome, index) => (
+                {market.options.map((option, index) => (
                   <button
                     key={index}
-                    onClick={() => handleMakePrediction(outcome.name)}
+                    onClick={() => handleMakePrediction(option.title)}
                     className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 text-left group"
                   >
                     <div className="flex justify-between items-center">
                       <div>
                         <div className="font-semibold text-gray-900 group-hover:text-blue-700">
-                          {outcome.name}
+                          {option.title}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {outcome.percentage}% probability
+                          {option.percentage || 50}% probability
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-blue-600">
-                          {outcome.odds}x
+                          {option.odds || 2.0}x
                         </div>
                         <div className="text-xs text-gray-500">
                           multiplier
@@ -322,13 +324,13 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Most Popular</span>
                   <span className="font-semibold text-gray-900">
-                    {market.outcomes[0]?.name || 'N/A'}
+                    {market.options[0]?.title || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Best Odds</span>
                   <span className="font-semibold text-blue-600">
-                    {Math.max(...market.outcomes.map(o => o.odds))}x
+                    {Math.max(...market.options.map(o => o.odds || 2.0))}x
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

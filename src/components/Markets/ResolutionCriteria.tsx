@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Market } from './types';
+import type { Market } from '@/types/market';
 
 interface ResolutionCriteriaProps {
   market: Market;

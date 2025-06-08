@@ -8,7 +8,8 @@ import {
   MarketSort, 
   CreateMarketRequest,
   MarketCreationState,
-  ApiResponse 
+  ApiResponse,
+  MarketCategory
 } from '@/types/market';
 
 // Market state interface
@@ -92,7 +93,7 @@ const initialState: MarketState = {
 
 // Reducer function
 function marketReducer(state: MarketState, action: MarketAction): MarketState {
-  console.log('🔄 MarketReducer - Action dispatched:', action.type, action.payload);
+  console.log('🔄 MarketReducer - Action dispatched:', action.type, 'payload' in action ? action.payload : 'no payload');
   
   switch (action.type) {
     case 'SET_LOADING':
@@ -324,7 +325,7 @@ export function MarketProvider({ children }: { children: ReactNode }) {
   }, [state.filters, fetchMarkets, setFilters]);
 
   const getMarketsByCategory = useCallback(async (category: string) => {
-    setFilters({ ...state.filters, category: category as any });
+    setFilters({ ...state.filters, category: category as MarketCategory });
     await fetchMarkets(1, 10);
   }, [state.filters, fetchMarkets, setFilters]);
 

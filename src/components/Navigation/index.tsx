@@ -1,15 +1,15 @@
 'use client';
 
 import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
-import { Bank, Home, User, GraphUp } from 'iconoir-react';
+import { Plus, Home, Trophy, GraphUp } from 'iconoir-react';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 /**
- * This component uses the UI Kit to navigate between pages
- * Bottom navigation is the most common navigation pattern in Mini Apps
- * We require mobile first design patterns for mini apps
- * Read More: https://docs.world.org/mini-apps/design/app-guidelines#mobile-first
+ * Updated navigation with the new 3-tab structure:
+ * - Create: For making predictions (coming soon)
+ * - Home: Markets page for browsing
+ * - Leader: Leaderboard (coming soon)
  */
 
 export const Navigation = () => {
@@ -19,13 +19,12 @@ export const Navigation = () => {
 
   // Update active tab based on current route
   useEffect(() => {
-    if (pathname.includes('/markets')) {
-      setValue('markets');
-    } else if (pathname.includes('/wallet')) {
-      setValue('wallet');
-    } else if (pathname.includes('/profile')) {
-      setValue('profile');
+    if (pathname.includes('/create')) {
+      setValue('create');
+    } else if (pathname.includes('/leader')) {
+      setValue('leader');
     } else {
+      // Default to home (markets)
       setValue('home');
     }
   }, [pathname]);
@@ -34,29 +33,25 @@ export const Navigation = () => {
     setValue(newValue);
     
     switch (newValue) {
-      case 'home':
-        router.push('/home');
+      case 'create':
+        // TODO: Navigate to create page when implemented
+        console.log('Create page - Coming soon');
         break;
-      case 'markets':
+      case 'home':
         router.push('/markets');
         break;
-      case 'wallet':
-        // TODO: Implement wallet page
-        console.log('Wallet page - Coming soon');
-        break;
-      case 'profile':
-        // TODO: Implement profile page
-        console.log('Profile page - Coming soon');
+      case 'leader':
+        // TODO: Navigate to leaderboard when implemented
+        console.log('Leaderboard page - Coming soon');
         break;
     }
   };
 
   return (
     <Tabs value={value} onValueChange={handleTabChange}>
+      <TabItem value="create" icon={<Plus />} label="Create" />
       <TabItem value="home" icon={<Home />} label="Home" />
-      <TabItem value="markets" icon={<GraphUp />} label="Markets" />
-      <TabItem value="wallet" icon={<Bank />} label="Wallet" />
-      <TabItem value="profile" icon={<User />} label="Profile" />
+      <TabItem value="leader" icon={<Trophy />} label="Leader" />
     </Tabs>
   );
 };

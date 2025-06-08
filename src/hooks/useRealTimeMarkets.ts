@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWebSocket, MarketUpdate } from './useWebSocket';
-import type { Market } from '@/components/Markets/types';
+import type { Market } from '@/types/market';
 
 interface UseRealTimeMarketsProps {
   markets: Market[];
@@ -24,9 +24,17 @@ export const useRealTimeMarkets = ({
         if (market.id === update.marketId) {
           return {
             ...market,
-            ...(update.totalVolume && { totalVolume: update.totalVolume }),
-            ...(update.totalStakers && { totalStakers: update.totalStakers }),
-            ...(update.outcomes && { outcomes: update.outcomes })
+            ...(update.totalVolume && { totalPool: parseFloat(update.totalVolume.replace(/[^0-9.]/g, '')) * 1000 }),
+            ...(update.totalStakers && { participantCount: update.totalStakers }),
+            ...(update.outcomes && { 
+              options: market.options.map((option, index) => ({
+                ...option,
+                ...(update.outcomes?.[index] && {
+                  odds: update.outcomes[index].odds,
+                  percentage: update.outcomes[index].percentage
+                })
+              }))
+            })
           };
         }
         return market;
@@ -72,7 +80,7 @@ export const useRealTimeMarkets = ({
       switch (updateType) {
         case 'volume':
           // Simulate volume increase
-          const currentVolume = parseFloat(randomMarket.totalVolume.replace(/[^0-9.]/g, ''));
+          const currentVolume = randomMarket.totalPool / 1000; // Convert back to K format
           const volumeIncrease = Math.random() * 5 + 0.1; // 0.1 to 5.1 increase
           update.totalVolume = `${(currentVolume + volumeIncrease).toFixed(1)}K WLD`;
           break;
@@ -80,20 +88,20 @@ export const useRealTimeMarkets = ({
         case 'stakers':
           // Simulate new stakers joining
           const stakersIncrease = Math.floor(Math.random() * 3) + 1; // 1-3 new stakers
-          update.totalStakers = (randomMarket.totalStakers || 0) + stakersIncrease;
+          update.totalStakers = randomMarket.participantCount + stakersIncrease;
           break;
 
         case 'odds':
           // Simulate odds changes
-          update.outcomes = randomMarket.outcomes.map(outcome => {
+          update.outcomes = randomMarket.options.map(option => {
             const oddsChange = (Math.random() - 0.5) * 0.2; // -0.1 to +0.1 change
-            const newOdds = Math.max(1.1, Math.min(10, outcome.odds + oddsChange));
+            const newOdds = Math.max(1.1, Math.min(10, (option.odds || 2.0) + oddsChange));
             
             // Recalculate percentages (simplified)
-            const newPercentage = Math.max(5, Math.min(95, outcome.percentage + (Math.random() - 0.5) * 10));
+            const newPercentage = Math.max(5, Math.min(95, (option.percentage || 50) + (Math.random() - 0.5) * 10));
             
             return {
-              ...outcome,
+              name: option.title,
               odds: parseFloat(newOdds.toFixed(2)),
               percentage: Math.round(newPercentage)
             };

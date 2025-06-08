@@ -1,40 +1,41 @@
 'use client';
 
 import { useState } from 'react';
-
-export type MarketCategory = 'all' | 'sports' | 'music' | 'crypto';
+import { MarketCategoryFilter } from '@/types/market';
 
 interface CategoryFilterProps {
-  selectedCategory?: MarketCategory;
-  onCategoryChange?: (category: MarketCategory) => void;
+  selectedCategory?: MarketCategoryFilter;
+  onCategoryChange?: (category: MarketCategoryFilter) => void;
 }
 
 const categoryIcons = {
   all: '🌟',
   sports: '⚽',
   music: '🎵',
-  crypto: '₿'
+  crypto: '₿',
+  user_generated: '👤'
 };
 
 const categoryLabels = {
   all: 'All Markets',
   sports: 'Sports',
   music: 'Music',
-  crypto: 'Crypto'
+  crypto: 'Crypto',
+  user_generated: 'User Generated'
 };
 
 export const CategoryFilter = ({ 
   selectedCategory = 'all', 
   onCategoryChange 
 }: CategoryFilterProps) => {
-  const [activeCategory, setActiveCategory] = useState<MarketCategory>(selectedCategory);
+  const [activeCategory, setActiveCategory] = useState<MarketCategoryFilter>(selectedCategory);
 
-  const handleCategorySelect = (category: MarketCategory) => {
+  const handleCategorySelect = (category: MarketCategoryFilter) => {
     setActiveCategory(category);
     onCategoryChange?.(category);
   };
 
-  const categories: MarketCategory[] = ['all', 'sports', 'music', 'crypto'];
+  const categories: MarketCategoryFilter[] = ['all', 'user_generated', 'sports', 'crypto', 'music'];
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1">

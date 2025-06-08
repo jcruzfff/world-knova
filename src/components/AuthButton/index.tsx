@@ -1,6 +1,6 @@
 'use client';
 import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
-import { MiniKit, ResponseEvent } from '@worldcoin/minikit-js';
+import { MiniKit } from '@worldcoin/minikit-js';
 import { useMiniKit } from '@worldcoin/minikit-js/minikit-provider';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,9 +9,19 @@ import { useRouter } from 'next/navigation';
  * AuthButton using the standard World Mini-App authentication pattern
  * Following the official documentation for wallet authentication
  */
-export const AuthButton = () => {
+
+interface AuthButtonProps {
+  onAuthSuccess?: () => void; // Callback for when authentication succeeds
+  variant?: 'primary' | 'secondary' | 'tertiary';  // Match World UI Kit Button variant options  
+  className?: string;
+}
+
+export const AuthButton = ({ 
+  onAuthSuccess, 
+  variant = 'primary',
+  className 
+}: AuthButtonProps) => {
   const [isPending, setIsPending] = useState(false);
-  const [nonce, setNonce] = useState<string | null>(null);
   const { isInstalled } = useMiniKit();
   const router = useRouter();
   
@@ -42,12 +52,10 @@ export const AuthButton = () => {
       });
       const { nonce } = await res.json();
       console.log('✅ Nonce received:', nonce?.substring(0, 8) + '...');
-      
-      setNonce(nonce);
 
       // Step 2: Use MiniKit.commandsAsync.walletAuth (from World docs)
       console.log('📱 Calling MiniKit.commandsAsync.walletAuth...');
-      const { commandPayload, finalPayload } = await MiniKit.commandsAsync.walletAuth({
+      const { finalPayload } = await MiniKit.commandsAsync.walletAuth({
         nonce: nonce,
         requestId: '0',
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
@@ -89,8 +97,17 @@ export const AuthButton = () => {
 
       if (data.status === 'success' && data.isValid) {
         console.log('🎉 Authentication completed successfully');
-        router.refresh();
-        router.push('/home');
+        
+        // Call the success callback if provided (for parent component to refresh state)
+        if (onAuthSuccess) {
+          onAuthSuccess();
+        } else {
+          // Fallback: refresh the router and page
+          router.refresh();
+          setTimeout(() => {
+            window.location.reload();
+          }, 100);
+        }
       } else {
         console.error('❌ SIWE verification failed:', data.message);
       }
@@ -100,7 +117,7 @@ export const AuthButton = () => {
     } finally {
       setIsPending(false);
     }
-  }, [isInstalled, isPending, router]);
+  }, [isInstalled, isPending, router, onAuthSuccess]);
 
   // Debug MiniKit status
   useEffect(() => {
@@ -112,7 +129,7 @@ export const AuthButton = () => {
   }, [isInstalled]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className={`flex flex-col items-center gap-4 ${className || ''}`}>
       {!isInstalled && (
         <div className="text-center p-4 bg-amber-100 rounded-lg border border-amber-300">
           <p className="text-amber-800 font-medium">Development Mode</p>
@@ -135,7 +152,7 @@ export const AuthButton = () => {
           onClick={onClick}
           disabled={isPending || !isInstalled}
           size="lg"
-          variant="primary"
+          variant={variant}
         >
           {isInstalled ? '🔄 [NEW] Login with Wallet' : 'World App Required'}
         </Button>

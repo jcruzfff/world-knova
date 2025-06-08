@@ -3,6 +3,7 @@
 
 export type MarketStatus = 'draft' | 'pending_approval' | 'active' | 'paused' | 'closed' | 'resolved' | 'cancelled';
 export type MarketCategory = 'sports' | 'crypto' | 'music' | 'user_generated';
+export type MarketCategoryFilter = MarketCategory | 'all'; // For filtering purposes
 export type OutcomeType = 'binary' | 'multiple' | 'scalar';
 
 // Individual market option/outcome
@@ -12,6 +13,11 @@ export interface MarketOption {
   description?: string;
   imageUrl?: string;
   orderIndex: number;
+  
+  // Display properties for UI (computed from stakes/pools)
+  odds?: number;           // Current odds multiplier (computed)
+  percentage?: number;     // Percentage of total pool (computed)
+  currentStake?: number;   // Current stake amount (computed)
 }
 
 // Market creation form data
@@ -59,14 +65,22 @@ export interface Market {
     displayName?: string;
     profilePictureUrl?: string;
   };
+  creator?: string;        // Backward compatibility field
   
-  // Oracle data
+  // Oracle data  
   oracleSource?: string;
   oracleId?: string;
+  
+  // Additional metadata for backwards compatibility
+  resolutionSource?: string;
+  rules?: string[];
   
   // Metadata
   imageUrl?: string;
   tags: string[];
+  
+  // Display properties (computed/derived)
+  subtitle?: string;       // Short description for cards (computed from description)
   
   // Stats
   participantCount: number;

@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     domains: ['static.usernames.app-backend.toolsforhumanity.com'],
   },
   allowedDevOrigins: [
-    'https://5347-24-5-60-88.ngrok-free.app',
+    'https://77a4-24-5-60-88.ngrok-free.app',
     'http://localhost:3000',
   ],
   reactStrictMode: false,
