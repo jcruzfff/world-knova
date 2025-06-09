@@ -112,6 +112,24 @@ export default function HomePage() {
     setProfileCompletionDismissed(false);
   };
 
+  // Helper function to get section title based on active category
+  const getSectionTitle = (category: MarketCategoryFilter): string => {
+    switch (category) {
+      case 'all':
+        return 'All Markets';
+      case 'sports':
+        return 'Sports Markets';
+      case 'crypto':
+        return 'Crypto Markets';
+      case 'music':
+        return 'Music Markets';
+      case 'user_generated':
+        return 'Community Markets';
+      default:
+        return 'All Markets';
+    }
+  };
+
   // Early return after all hooks
   if (loading || state.isLoading) {
     return (
@@ -225,7 +243,7 @@ export default function HomePage() {
         {/* All Markets Section */}
         <div className="px-[14px] mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">All Markets</h2>
+            <h2 className="text-lg font-semibold text-white">{getSectionTitle(activeCategory)}</h2>
           </div>
 
           <div className="space-y-3">
