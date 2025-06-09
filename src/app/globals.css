@@ -6,36 +6,22 @@
   --foreground: #ffffff;
   --card-background: #1D283B;
   --accent-green: #E9FF74;
-  --accent-blue: #74FFFF;
+  --accent-blue: #74C7FF;
+  --accent-purple: #B174FF;
+  --accent-pink: #FF74E9;
   --accent-orange: #FBAC58;
   --text-muted: #9CA3AF;
+  --border-color: #373a46;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Global body styles */
 body {
-  background: #0F111A;
-  color: #ffffff;
-  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-outfit), 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Ensure all elements inherit Outfit font */
-* {
-  font-family: inherit;
-}
-
-/* Hide scrollbars for horizontal carousel */
+/* Hide scrollbars */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

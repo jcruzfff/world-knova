@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@worldcoin/mini-apps-ui-kit-react';
+import { Button } from '@/components/UI';
 import { useState, useEffect } from 'react';
 import { useProfileCompletion } from '@/providers/ProfileCompletionProvider';
 import { useRouter } from 'next/navigation';

@@ -2,7 +2,7 @@
 
 import { MarketDetailProps } from './types';
 import { CountdownTimer } from './CountdownTimer';
-import { Button } from '@worldcoin/mini-apps-ui-kit-react';
+import { Button } from '@/components/UI';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 // import { useRealTimeMarkets } from '@/hooks/useRealTimeMarkets'; // TODO: Enable after smart contracts are implemented

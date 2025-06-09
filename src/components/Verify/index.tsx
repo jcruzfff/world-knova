@@ -1,5 +1,5 @@
 'use client';
-import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
+import { Button, LiveFeedback } from '@/components/UI';
 import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
 import { useMiniKit } from '@worldcoin/minikit-js/minikit-provider';
 import { useState, useEffect } from 'react';

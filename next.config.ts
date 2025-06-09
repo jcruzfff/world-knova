@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
   
   // Remove complex webpack optimizations that might cause chunk loading issues
   experimental: {
-    optimizePackageImports: ['@worldcoin/mini-apps-ui-kit-react'],
+    // optimizePackageImports removed - no longer using UI kit
   },
   
   // Simplify webpack config for more reliable chunk loading

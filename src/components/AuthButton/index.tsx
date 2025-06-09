@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useSession } from '@/hooks/useSession';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 /**
  * AuthButton using the standard World Mini-App authentication pattern
@@ -14,18 +15,21 @@ import { useSession } from '@/hooks/useSession';
 
 interface AuthButtonProps {
   onAuthSuccess?: () => void; // Callback for when authentication succeeds
+  onProfileComplete?: () => void; // Callback to trigger profile completion
   variant?: 'primary' | 'secondary' | 'tertiary';  // Keep for compatibility but will use custom design  
   className?: string;
 }
 
 export const AuthButton = ({ 
   onAuthSuccess, 
+  onProfileComplete,
   className 
 }: AuthButtonProps) => {
   const [isPending, setIsPending] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isInstalled } = useMiniKit();
   const { user, loading: sessionLoading, refreshSession } = useSession();
+  const { balance, loading: balanceLoading } = useWalletBalance();
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
   
@@ -174,6 +178,13 @@ export const AuthButton = ({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  // Format wallet balance for display
+  const formatWalletBalance = () => {
+    if (balanceLoading) return '...';
+    if (!balance) return '$0';
+    return `$${balance.usd.toLocaleString()}`;
+  };
+
   // If user is authenticated, show wallet value
   if (user && !sessionLoading) {
     return (
@@ -181,24 +192,24 @@ export const AuthButton = ({
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           data-layer="span" 
-          className={`Span w-[70px] h-7 px-1.5 py-[3px] bg-white/5 rounded-full  outline-[0.50px] outline-offset-[-0.50px] outline-[#373a46] inline-flex flex-col justify-center items-center gap-2.5 overflow-hidden cursor-pointer hover:bg-white/10 transition-all duration-200 ${isDropdownOpen ? 'bg-white/10' : ''}`}
+          className={`Span h-7 px-1.5 py-[3px] bg-white/5 rounded-full outline-[0.50px] outline-offset-[-0.50px] outline-[#373a46] inline-flex flex-col justify-center items-center gap-2.5 cursor-pointer hover:bg-white/10 transition-all duration-200 ${isDropdownOpen ? 'bg-white/10' : ''}`}
         >
           <div 
             data-layer="Frame 2147224426" 
-            className="Frame2147224426 self-stretch inline-flex justify-start items-center gap-1"
+            className="Frame2147224426 inline-flex justify-start items-center gap-1 whitespace-nowrap"
           >
             <Image
               src="/world-icon.svg"
               alt="World Coin"
-              width={16}
-              height={16}
+              width={20}
+              height={20}
               className="w-4 h-4"
             />
             <div 
               data-layer="wallet-value" 
-              className="WalletValue justify-start text-[#d0d0d0] text-xs font-normal font-['Outfit']"
+              className="WalletValue text-[#d0d0d0] text-sm font-normal font-['Outfit'] whitespace-nowrap"
             >
-              $806
+              {formatWalletBalance()}
             </div>
           </div>
         </button>
@@ -208,39 +219,88 @@ export const AuthButton = ({
           <div className="absolute top-full right-0 mt-2 w-64 bg-[#1d283b] border border-[#373a46] rounded-lg shadow-lg overflow-hidden z-50">
             {/* User Info Section */}
             <div className="p-4 border-b border-[#373a46]">
-              <div className="flex items-center gap-3">
-                {user.profile_picture_url && (
-                  <Image
-                    src={user.profile_picture_url}
-                    alt="Profile"
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
+              <div className="flex items-start gap-3">
+                {/* Avatar - fallback to user icon if no profile picture */}
+                <div className="w-8 h-8 rounded-full bg-[#373a46] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {user.profilePictureUrl ? (
+                    <Image
+                      src={user.profilePictureUrl}
+                      alt="Profile"
+                      width={32}
+                      height={32}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg className="w-4 h-4 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  )}
+                </div>
+                
+                {/* User Details */}
                 <div className="flex-1 min-w-0">
+                  {/* Username */}
                   <div className="text-white text-sm font-medium font-['Outfit'] truncate">
                     {user.username || 'Anonymous'}
                   </div>
-                  <div className="text-[#a0a0a0] text-xs font-['Outfit'] truncate">
-                    {truncateAddress(user.wallet_address)}
+                  
+                  {/* Wallet Address - 8px gap below username */}
+                  <div className="mt-2">
+                    <button
+                      onClick={() => {
+                        if (user.walletAddress) {
+                          window.open(`https://etherscan.io/address/${user.walletAddress}`, '_blank');
+                        }
+                      }}
+                      className="flex items-center gap-1 text-[#a0a0a0] text-xs font-['Outfit'] hover:text-white transition-colors group"
+                    >
+                      <span className="truncate">
+                        {truncateAddress(user.walletAddress)}
+                      </span>
+                      <Image
+                        src="/open-url.svg"
+                        alt="Open in explorer"
+                        width={12}
+                        height={12}
+                        className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      />
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Disconnect Button */}
-            <div className="p-2">
+            {/* Menu Options */}
+            <div className="py-2">
+              {/* Complete Profile - Only show if profile is incomplete */}
+              {!user.isProfileComplete && (
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onProfileComplete?.();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:bg-[#373a46] transition-colors duration-200"
+                >
+                  <svg className="w-4 h-4 text-[#e9ff74] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium font-['Outfit']">
+                    Complete Profile
+                  </span>
+                </button>
+              )}
+
+              {/* Disconnect Button */}
               <button
                 onClick={handleDisconnect}
-                className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-[#373a46] rounded-md transition-colors duration-200"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:bg-[#373a46] transition-colors duration-200"
               >
                 <Image
                   src="/signoff-icon.svg"
                   alt="Disconnect"
                   width={16}
                   height={16}
-                  className="w-4 h-4"
+                  className="w-4 h-4 flex-shrink-0"
                 />
                 <span className="text-sm font-medium font-['Outfit']">
                   Disconnect

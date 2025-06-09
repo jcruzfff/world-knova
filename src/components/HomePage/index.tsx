@@ -18,12 +18,34 @@ export default function HomePage() {
   const { state, fetchMarkets } = useMarkets();
   const [activeCategory, setActiveCategory] = useState<MarketCategoryFilter>('all');
   const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
+  const [profileCompletionDismissed, setProfileCompletionDismissed] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // All useEffect hooks must be before any early returns
   useEffect(() => {
     fetchMarkets();
   }, [fetchMarkets]);
+
+  // Check if user previously dismissed the profile completion
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const dismissed = sessionStorage.getItem('profileCompletionDismissed');
+      setProfileCompletionDismissed(dismissed === 'true');
+    }
+  }, []);
+
+  // Auto-show profile completion for incomplete profiles (but respect dismissal)
+  useEffect(() => {
+    if (user && !user.isProfileComplete && !profileCompletionDismissed) {
+      // Small delay to prevent jarring immediate popup
+      const timer = setTimeout(() => {
+        setShowProfileCompletion(true);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, profileCompletionDismissed]);
 
   // Ensure activeCardIndex is within bounds when markets change
   useEffect(() => {
@@ -67,6 +89,29 @@ export default function HomePage() {
     // Don't call fetchMarkets() - just update local state for client-side filtering
   };
 
+  const handleProfileCompletionClose = () => {
+    setShowProfileCompletion(false);
+    setProfileCompletionDismissed(true);
+    // Remember dismissal for this session
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('profileCompletionDismissed', 'true');
+    }
+  };
+
+  const handleProfileCompletionComplete = () => {
+    setShowProfileCompletion(false);
+    setProfileCompletionDismissed(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('profileCompletionDismissed');
+    }
+    router.refresh();
+  };
+
+  const handleOpenProfileCompletion = () => {
+    setShowProfileCompletion(true);
+    setProfileCompletionDismissed(false);
+  };
+
   // Early return after all hooks
   if (loading || state.isLoading) {
     return (
@@ -97,8 +142,42 @@ export default function HomePage() {
           <div>
             <h1 className="text-2xl font-bold text-white">Knova</h1>
           </div>
-          <AuthButton />
+          <div className="flex items-center gap-3">
+
+            <AuthButton onProfileComplete={handleOpenProfileCompletion} />
+          </div>
         </div>
+
+        {/* Profile Completion Banner - only show if user is authenticated but profile incomplete and not dismissed */}
+        {user && !user.isProfileComplete && !showProfileCompletion && !profileCompletionDismissed && (
+          <div className="mx-[14px] mb-6 p-4 bg-[#1D283B] border border-[#373a46] rounded-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h3 className="text-white font-semibold font-['Outfit']">Complete Your Profile</h3>
+                  <p className="text-[#a0a0a0] text-sm font-['Outfit']">Finish setting up to access all features</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleProfileCompletionClose}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  aria-label="Dismiss"
+                >
+                  <svg className="w-4 h-4 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleOpenProfileCompletion}
+                  className="bg-[#e9ff74] hover:bg-[#d4e668] px-4 py-2 rounded-lg text-black font-semibold text-sm font-['Outfit'] transition-colors"
+                >
+                  Complete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Featured Markets Section - Horizontal Carousel */}
         <section className="mb-8">
@@ -177,9 +256,14 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Profile Completion Modal - Shows when user exists but profile incomplete */}
-      {user && !user.isProfileComplete && (
-        <ProfileCompletionWrapper user={user} />
+      {/* Profile Completion Sheet - Shows when user exists and sheet is requested */}
+      {user && showProfileCompletion && (
+        <ProfileCompletionWrapper 
+          user={user} 
+          initialOpen={showProfileCompletion}
+          onClose={handleProfileCompletionClose}
+          onComplete={handleProfileCompletionComplete}
+        />
       )}
     </>
   );

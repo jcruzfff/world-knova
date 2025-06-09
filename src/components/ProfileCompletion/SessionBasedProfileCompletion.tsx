@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@worldcoin/mini-apps-ui-kit-react';
 import { useState } from 'react';
 
 interface SessionBasedProfileCompletionProps {
@@ -13,7 +12,8 @@ interface SessionBasedProfileCompletionProps {
     region?: string;
     username?: string;
   };
-  onComplete: () => void;
+  onCompleteAction: () => void;
+  onSkip?: () => void; // Add optional skip callback
 }
 
 // Countries where prediction markets are generally restricted
@@ -32,7 +32,7 @@ const MIN_AGE = 18;
  * ProfileCompletion component with database integration
  * Handles compliance checking and calls the API for profile completion
  */
-export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBasedProfileCompletionProps) => {
+export const SessionBasedProfileCompletion = ({ user, onCompleteAction }: SessionBasedProfileCompletionProps) => {
   const [formData, setFormData] = useState({
     age: user.age?.toString() || '',
     countryCode: user.countryCode || '',
@@ -121,7 +121,7 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
 
       if (data.success) {
         console.log('✅ Profile completed successfully:', data.user);
-        onComplete();
+        onCompleteAction();
       } else {
         setError(data.message || 'Failed to complete profile');
       }
@@ -135,30 +135,30 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="bg-[#1D283B] text-white overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-8 text-white">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-3xl">👤</span>
-          <h2 className="text-2xl font-bold">Complete Your Profile</h2>
+      <div className="px-6 py-6">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+      
+            <p className="text-[#a0a0a0] font-['Outfit'] mt-1">
+              Hi {user.username}! Let&apos;s set up your account to access prediction markets.
+            </p>
+          </div>
         </div>
-        <p className="text-blue-100">
-          Hi {user.username}! Let's set up your account to access prediction markets.
-        </p>
       </div>
 
       {/* Form Content */}
-      <div className="p-6">
+      <div className="px-6 pb-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Age Verification Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🎂</span>
-              <h3 className="text-lg font-semibold text-gray-900">Age Verification</h3>
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold text-white font-['Outfit']">Age Verification</h3>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[#a0a0a0] mb-2 font-['Outfit']">
                 How old are you? *
               </label>
               <input
@@ -167,12 +167,11 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
                 max="120"
                 value={formData.age}
                 onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
-                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                className="w-full p-4 bg-[#0F111A] border border-[#373a46] rounded-xl focus:ring-2 focus:ring-[#e9ff74] focus:border-[#e9ff74] text-lg text-white placeholder-[#666] font-['Outfit']"
                 placeholder="Enter your age"
                 required
               />
-              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                <span>ℹ️</span>
+              <p className="text-xs text-[#a0a0a0] mt-2 font-['Outfit']">
                 Must be {MIN_AGE} or older to participate
               </p>
             </div>
@@ -180,14 +179,13 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
 
           {/* Location Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🌍</span>
-              <h3 className="text-lg font-semibold text-gray-900">Location Information</h3>
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold text-white font-['Outfit']">Location Information</h3>
             </div>
             
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[#a0a0a0] mb-2 font-['Outfit']">
                   Country Code *
                 </label>
                 <input
@@ -199,12 +197,12 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
                     ...prev, 
                     countryCode: e.target.value.toUpperCase() 
                   }))}
-                  className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg uppercase"
+                  className="w-full p-4 bg-[#0F111A] border border-[#373a46] rounded-xl focus:ring-2 focus:ring-[#e9ff74] focus:border-[#e9ff74] text-lg uppercase text-white placeholder-[#666] font-['Outfit']"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[#a0a0a0] mb-2 font-['Outfit']">
                   Region/State *
                 </label>
                 <input
@@ -212,7 +210,7 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
                   placeholder="California, Ontario, London..."
                   value={formData.region}
                   onChange={(e) => setFormData(prev => ({ ...prev, region: e.target.value }))}
-                  className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                  className="w-full p-4 bg-[#0F111A] border border-[#373a46] rounded-xl focus:ring-2 focus:ring-[#e9ff74] focus:border-[#e9ff74] text-lg text-white placeholder-[#666] font-['Outfit']"
                   required
                 />
               </div>
@@ -223,32 +221,26 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
           {formData.age && formData.countryCode && Number(formData.age) >= MIN_AGE && (
             <div className={`p-4 rounded-xl border-2 ${
               checkEligibility(Number(formData.age), formData.countryCode).eligible 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-red-50 border-red-200'
+                ? 'bg-green-900/20 border-green-500/30' 
+                : 'bg-red-900/20 border-red-500/30'
             }`}>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">
-                  {checkEligibility(Number(formData.age), formData.countryCode).eligible ? '✅' : '❌'}
-                </span>
-                <p className={`text-sm font-medium ${
-                  checkEligibility(Number(formData.age), formData.countryCode).eligible 
-                    ? 'text-green-700' 
-                    : 'text-red-700'
-                }`}>
-                  {checkEligibility(Number(formData.age), formData.countryCode).reason}
-                </p>
-              </div>
+              <p className={`text-sm font-medium font-['Outfit'] ${
+                checkEligibility(Number(formData.age), formData.countryCode).eligible 
+                  ? 'text-green-400' 
+                  : 'text-red-400'
+              }`}>
+                {checkEligibility(Number(formData.age), formData.countryCode).reason}
+              </p>
             </div>
           )}
 
           {/* Terms and Privacy Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📋</span>
-              <h3 className="text-lg font-semibold text-gray-900">Legal Requirements</h3>
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold text-white font-['Outfit']">Legal Requirements</h3>
             </div>
             
-            <div className="bg-gray-50 rounded-xl p-4 space-y-4">
+            <div className="bg-[#0F111A] rounded-xl p-4 space-y-4 border border-[#373a46]">
               <label className="flex items-start space-x-3 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -257,12 +249,12 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
                     ...prev, 
                     termsAccepted: e.target.checked 
                   }))}
-                  className="h-5 w-5 text-blue-600 rounded border-2 border-gray-300 mt-1 focus:ring-blue-500"
+                  className="h-5 w-5 text-[#e9ff74] rounded border-2 border-[#373a46] mt-1 focus:ring-[#e9ff74] bg-[#0F111A]"
                   required
                 />
                 <div className="flex-1">
-                  <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                    I accept the <span className="font-semibold text-blue-600">Terms of Service</span> and understand the risks of prediction markets. 
+                  <span className="text-sm text-[#a0a0a0] group-hover:text-white transition-colors font-['Outfit']">
+                    I accept the <span className="font-semibold text-[#e9ff74]">Terms of Service</span> and understand the risks of prediction markets. 
                     I acknowledge this is a form of speculation and I may lose money.
                   </span>
                 </div>
@@ -276,12 +268,12 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
                     ...prev, 
                     privacyAccepted: e.target.checked 
                   }))}
-                  className="h-5 w-5 text-blue-600 rounded border-2 border-gray-300 mt-1 focus:ring-blue-500"
+                  className="h-5 w-5 text-[#e9ff74] rounded border-2 border-[#373a46] mt-1 focus:ring-[#e9ff74] bg-[#0F111A]"
                   required
                 />
                 <div className="flex-1">
-                  <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                    I accept the <span className="font-semibold text-blue-600">Privacy Policy</span> and consent to the processing of my data.
+                  <span className="text-sm text-[#a0a0a0] group-hover:text-white transition-colors font-['Outfit']">
+                    I accept the <span className="font-semibold text-[#e9ff74]">Privacy Policy</span> and consent to the processing of my data.
                   </span>
                 </div>
               </label>
@@ -289,37 +281,30 @@ export const SessionBasedProfileCompletion = ({ user, onComplete }: SessionBased
           </div>
 
           {error && (
-            <div className="p-4 bg-red-100 border-2 border-red-300 text-red-700 rounded-xl">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">⚠️</span>
-                <span className="font-medium">{error}</span>
-              </div>
+            <div className="p-4 bg-red-900/20 border-2 border-red-500/30 text-red-400 rounded-xl">
+              <span className="font-medium font-['Outfit']">{error}</span>
             </div>
           )}
 
-          {/* Submit Button with proper bottom spacing for fixed navigation */}
-          <div className="pt-4 pb-24"> {/* Extra padding for fixed navigation */}
-            <Button
+          {/* Submit Button with proper bottom spacing */}
+          <div className="pt-4 pb-6">
+            <button
               type="submit"
               disabled={isSubmitting || !formData.termsAccepted || !formData.privacyAccepted}
-              className="w-full"
-              variant="primary"
-              size="lg"
+              className={`w-full rounded-full transition-all duration-200 ease-in-out font-['Outfit'] ${
+                isSubmitting || !formData.termsAccepted || !formData.privacyAccepted
+                  ? 'bg-gray-600 cursor-not-allowed opacity-60' 
+                  : 'bg-[#e9ff74] hover:bg-[#d4e668] active:bg-[#c1d35c] cursor-pointer'
+              }`}
             >
-              <div className="flex items-center justify-center gap-2 py-2">
-                {isSubmitting ? (
-                  <>
-                    <span className="animate-spin">⏳</span>
-                    <span>Completing Profile...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>🚀</span>
-                    <span>Complete Profile & Continue</span>
-                  </>
-                )}
+              <div className="flex flex-row items-center justify-center relative w-full h-full">
+                <div className="flex flex-row gap-2.5 items-center justify-center px-5 py-4 relative w-full h-full">
+                  <div className="font-semibold text-[14px] text-black text-nowrap leading-normal">
+                    {isSubmitting ? 'Completing Profile...' : 'Complete Profile & Continue'}
+                  </div>
+                </div>
               </div>
-            </Button>
+            </button>
           </div>
         </form>
       </div>
