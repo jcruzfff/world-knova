@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
+import HomePage from '@/components/HomePage';
 
-export default async function Home() {
-  // Always redirect to markets page (the new home)
-  redirect('/markets');
+export default function Home() {
+  return <HomePage />;
 }

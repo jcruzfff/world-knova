@@ -72,6 +72,7 @@ export const useRealTimeMarkets = ({
       ];
       const updateType = updateTypes[Math.floor(Math.random() * updateTypes.length)];
 
+      // eslint-disable-next-line prefer-const
       let update: Partial<MarketUpdate> = {
         marketId: randomMarket.id,
         timestamp: Date.now()

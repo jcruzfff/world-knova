@@ -4,10 +4,10 @@ import { getMarketById } from '@/lib/mockData';
 // GET /api/markets/[id] - Get specific market by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const marketId = params.id;
+    const { id: marketId } = await params;
     console.log('📊 Market detail API GET:', { marketId });
 
     // Get market by ID

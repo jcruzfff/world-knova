@@ -120,7 +120,7 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
         <div className="flex items-center justify-between">
           {/* Left: Back Button */}
           <button
-            onClick={() => router.push('/markets')}
+            onClick={() => router.push('/')}
             className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             <span className="text-xl">‹</span>

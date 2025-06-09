@@ -53,11 +53,11 @@ export const CountdownTimer = ({ endTime, variant = 'default', compact = false }
       <div className={`
         inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium
         ${variant === 'featured' 
-          ? 'bg-red-500/20 text-red-100' 
-          : 'bg-red-100 text-red-600'
+          ? 'bg-red-500/20 text-red-300' 
+          : 'bg-red-500/20 text-red-400'
         }
       `}>
-        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+        <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
         Market Ended
       </div>
     );
@@ -68,25 +68,25 @@ export const CountdownTimer = ({ endTime, variant = 'default', compact = false }
   if (variant === 'featured') {
     return (
       <div className="space-y-2">
-        <div className="text-xs opacity-80 font-medium">Ends in</div>
+        <div className="text-xs text-[#9CA3AF] font-medium">Ends in</div>
         <div className="flex items-center gap-3">
           {timeLeft.days > 0 && (
             <div className="text-center">
-              <div className="text-2xl font-bold">{timeLeft.days}</div>
-              <div className="text-xs opacity-80">days</div>
+              <div className="text-2xl font-bold text-white">{timeLeft.days}</div>
+              <div className="text-xs text-[#9CA3AF]">days</div>
             </div>
           )}
           <div className="text-center">
-            <div className="text-2xl font-bold">{timeLeft.hours.toString().padStart(2, '0')}</div>
-            <div className="text-xs opacity-80">hours</div>
+            <div className="text-2xl font-bold text-white">{timeLeft.hours.toString().padStart(2, '0')}</div>
+            <div className="text-xs text-[#9CA3AF]">hours</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{timeLeft.minutes.toString().padStart(2, '0')}</div>
-            <div className="text-xs opacity-80">mins</div>
+            <div className="text-2xl font-bold text-white">{timeLeft.minutes.toString().padStart(2, '0')}</div>
+            <div className="text-xs text-[#9CA3AF]">mins</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{timeLeft.seconds.toString().padStart(2, '0')}</div>
-            <div className="text-xs opacity-80">secs</div>
+            <div className="text-2xl font-bold text-white">{timeLeft.seconds.toString().padStart(2, '0')}</div>
+            <div className="text-xs text-[#9CA3AF]">secs</div>
           </div>
         </div>
       </div>
@@ -95,7 +95,7 @@ export const CountdownTimer = ({ endTime, variant = 'default', compact = false }
 
   if (compact) {
     return (
-      <span className="text-sm font-medium text-gray-600">
+      <span className="text-sm font-medium text-[#9CA3AF]">
         {timeLeft.days > 0 
           ? `${timeLeft.days}d ${timeLeft.hours}h`
           : `${timeLeft.hours}h ${timeLeft.minutes}m`
@@ -108,11 +108,11 @@ export const CountdownTimer = ({ endTime, variant = 'default', compact = false }
     <div className={`
       inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium
       ${isUrgent 
-        ? 'bg-orange-100 text-orange-600' 
-        : 'bg-blue-100 text-blue-600'
+        ? 'bg-orange-500/20 text-orange-400' 
+        : 'bg-[#E9FF74]/20 text-[#E9FF74]'
       }
     `}>
-      <span className={`w-2 h-2 rounded-full ${isUrgent ? 'bg-orange-500 animate-pulse' : 'bg-blue-500'}`} />
+      <span className={`w-2 h-2 rounded-full ${isUrgent ? 'bg-orange-400 animate-pulse' : 'bg-[#E9FF74]'}`} />
       {timeLeft.days > 0 
         ? `${timeLeft.days}d ${timeLeft.hours}h left`
         : `${timeLeft.hours}h ${timeLeft.minutes}m left`

@@ -205,6 +205,25 @@ interface MarketContextType {
   getMarketsByCategory: (category: string) => Promise<void>;
 }
 
+// Helper function to convert date strings back to Date objects
+function transformMarketDates(market: any): Market {
+  return {
+    ...market,
+    startTime: new Date(market.startTime),
+    endTime: new Date(market.endTime),
+    resolutionTime: market.resolutionTime ? new Date(market.resolutionTime) : undefined,
+    createdAt: new Date(market.createdAt),
+    updatedAt: new Date(market.updatedAt)
+  };
+}
+
+function transformMarketsResponse(response: any): MarketsResponse {
+  return {
+    ...response,
+    markets: response.markets.map(transformMarketDates)
+  };
+}
+
 // Create context
 const MarketContext = createContext<MarketContextType | undefined>(undefined);
 
@@ -234,7 +253,8 @@ export function MarketProvider({ children }: { children: ReactNode }) {
       console.log('📡 MarketProvider - API response received:', { success: result.success, marketsCount: result.data?.markets.length });
 
       if (result.success && result.data) {
-        dispatch({ type: 'SET_MARKETS', payload: result.data });
+        const transformedData = transformMarketsResponse(result.data);
+        dispatch({ type: 'SET_MARKETS', payload: transformedData });
       } else {
         console.error('❌ MarketProvider - API error:', result.error);
         dispatch({ type: 'SET_ERROR', payload: result.error || 'Failed to fetch markets' });
@@ -258,7 +278,8 @@ export function MarketProvider({ children }: { children: ReactNode }) {
       console.log('📡 MarketProvider - Market API response received:', { success: result.success, marketId: result.data?.id });
 
       if (result.success && result.data) {
-        dispatch({ type: 'SET_CURRENT_MARKET', payload: result.data });
+        const transformedMarket = transformMarketDates(result.data);
+        dispatch({ type: 'SET_CURRENT_MARKET', payload: transformedMarket });
       } else {
         console.error('❌ MarketProvider - Market API error:', result.error);
         dispatch({ type: 'SET_MARKET_ERROR', payload: result.error || 'Failed to fetch market' });
@@ -288,10 +309,11 @@ export function MarketProvider({ children }: { children: ReactNode }) {
       console.log('📡 MarketProvider - Create market API response:', { success: result.success, marketId: result.data?.id });
 
       if (result.success && result.data) {
-        dispatch({ type: 'ADD_MARKET', payload: result.data });
+        const transformedMarket = transformMarketDates(result.data);
+        dispatch({ type: 'ADD_MARKET', payload: transformedMarket });
         dispatch({ type: 'RESET_CREATION_STATE' });
         console.log('✅ MarketProvider - Market created successfully:', result.data.id);
-        return result.data;
+        return transformedMarket;
       } else {
         console.error('❌ MarketProvider - Create market API error:', result.error);
         dispatch({ type: 'SET_ERROR', payload: result.error || 'Failed to create market' });

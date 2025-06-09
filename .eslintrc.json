@@ -2,6 +2,8 @@
   "extends": "next/core-web-vitals",
   "ignorePatterns": [
     "src/generated/**/*",
+    "src/generated/**/*.js",
+    "src/generated/**/*.d.ts",
     ".next/**/*",
     "out/**/*",
     "node_modules/**/*"

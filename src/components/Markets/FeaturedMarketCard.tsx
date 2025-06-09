@@ -1,76 +1,85 @@
 'use client';
 
+import Image from 'next/image';
 import { MarketCardProps } from './types';
-import { Button } from '@worldcoin/mini-apps-ui-kit-react';
 
 export const FeaturedMarketCard = ({ market, onClick }: MarketCardProps) => {
-  // Use correct field names from main Market type
-  const topOption = market.options[0];
-  const secondOption = market.options[1];
+  // Format the market value
+  const displayVolume = `$${market.totalPool.toLocaleString()} WLD`;
   
-  // Compute display values with fallbacks
-  const displaySubtitle = market.subtitle || market.description?.substring(0, 100) + '...' || 'No description';
-  const displayVolume = `$${market.totalPool.toLocaleString()}`;
-
+  // Truncate question if longer than 12 words
+  const truncateQuestion = (question: string, maxWords: number = 12): string => {
+    const words = question.split(' ');
+    if (words.length <= maxWords) {
+      return question;
+    }
+    return words.slice(0, maxWords).join(' ') + '...?';
+  };
+  
+  const displayQuestion = truncateQuestion(market.title);
+  
   return (
     <div 
+      data-layer="Market Card" 
+      className="MarketCard w-[356px] h-[237px] relative bg-[#1d283b] rounded-[18px] overflow-hidden cursor-pointer flex-shrink-0"
       onClick={onClick}
-      className="relative bg-gradient-to-br from-blue-600 to-purple-700 rounded-3xl p-6 text-white cursor-pointer overflow-hidden group hover:scale-[1.02] transition-transform duration-300"
     >
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl transform translate-x-16 -translate-y-16" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-xl transform -translate-x-12 translate-y-12" />
-      
-      {/* Featured badge */}
-      <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-xs font-semibold mb-4">
-        <span>⭐</span>
-        <span>Featured</span>
+      <div 
+        data-layer="Market Question" 
+        className="MarketQuestion left-[14px] bottom-[14px] absolute text-white text-lg font-normal leading-tight max-w-[328px] flex items-center"
+        style={{ top: '170px', height: '53px' }}
+      >
+        <span className="py-[14px]">
+          {displayQuestion}
+        </span>
       </div>
-
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Title and description */}
-        <div className="mb-6">
-          <h2 className="text-xl font-bold mb-2 line-clamp-2">
-            {market.title}
-          </h2>
-          <p className="text-sm opacity-90">{displaySubtitle}</p>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <div className="text-xs opacity-75 mb-1">Total Volume</div>
-            <div className="text-lg font-bold">{displayVolume}</div>
-          </div>
-          <div>
-            <div className="text-xs opacity-75 mb-1">Participants</div>
-            <div className="text-lg font-bold">{market.participantCount || 0}</div>
-          </div>
-        </div>
-
-        {/* Top options preview */}
-        <div className="space-y-2 mb-6">
-          <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-            <span className="font-medium">{topOption.title}</span>
-            <span className="font-bold">{topOption.odds || 2.0}x</span>
-          </div>
-          <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-            <span className="font-medium">{secondOption.title}</span>
-            <span className="font-bold">{secondOption.odds || 2.0}x</span>
-          </div>
-        </div>
-
-        {/* Action */}
-        <Button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick?.();
-          }}
-          className="w-full bg-white text-blue-600 hover:bg-gray-100 font-semibold"
+      
+      <div 
+        data-layer="Market Image" 
+        className="MarketImage w-[356px] h-[156px] left-0 top-0 absolute bg-[#3e4f6c]"
+      >
+        {market.imageUrl ? (
+          <Image 
+            src={market.imageUrl} 
+            alt={market.title}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-[#3e4f6c]" />
+        )}
+        
+        {/* Amount Value - Top Left */}
+        <div 
+          data-layer="span" 
+          className="Span h-9 px-3 py-1 left-[14px] top-[14px] absolute bg-white/10 backdrop-blur-sm rounded-full border-gray-200 inline-flex justify-center items-center gap-2.5 overflow-hidden"
         >
-          Place Prediction
-        </Button>
+          <div 
+            data-layer="Market Value" 
+            className="MarketValue text-[#d0d0d0] text-base font-normal"
+          >
+            {displayVolume}
+          </div>
+        </div>
+
+        {/* Player Icons and Count - Top Right */}
+        <div className="absolute right-[14px] top-[24px] flex items-center gap-2">
+          <div 
+            data-layer="Player Icons" 
+            className="PlayerIcons inline-flex justify-start items-center"
+          >
+            <div data-layer="Ellipse 11904" className="w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b]" />
+            <div data-layer="Ellipse 11905" className="w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b] -ml-2" />
+            <div data-layer="Ellipse 11906" className="w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b] -ml-2" />
+          </div>
+          
+          <div 
+            data-layer="Player Count" 
+            className="PlayerCount text-[#d0d0d0] text-xs font-normal whitespace-nowrap"
+          >
+            {market.participantCount || 129} players
+          </div>
+        </div>
       </div>
     </div>
   );

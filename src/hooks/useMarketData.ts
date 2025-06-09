@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useMarkets } from '@/providers/MarketProvider';
-import { MarketFilters, MarketSort } from '@/types/market';
+import { MarketFilters, MarketSort, CreateMarketRequest } from '@/types/market';
 
 // Hook for fetching markets with automatic loading on mount
 export function useMarketList(
@@ -158,7 +158,7 @@ export function useMarketCreation() {
     }
   };
 
-  const updateFormData = (data: any) => {
+  const updateFormData = (data: Partial<CreateMarketRequest>) => {
     updateCreationState({ 
       formData: { ...state.creationState.formData, ...data }
     });

@@ -2,10 +2,13 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ['static.usernames.app-backend.toolsforhumanity.com'],
+    domains: [
+      'static.usernames.app-backend.toolsforhumanity.com',
+      'images.unsplash.com'
+    ],
   },
   allowedDevOrigins: [
-    'https://77a4-24-5-60-88.ngrok-free.app',
+    'https://fd99-24-5-60-88.ngrok-free.app',
     'http://localhost:3000',
   ],
   reactStrictMode: false,

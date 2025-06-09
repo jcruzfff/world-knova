@@ -1,31 +1,35 @@
 'use client';
-import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { useMiniKit } from '@worldcoin/minikit-js/minikit-provider';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { useSession } from '@/hooks/useSession';
 
 /**
  * AuthButton using the standard World Mini-App authentication pattern
  * Following the official documentation for wallet authentication
+ * Updated with new Figma design - lime-green pill button
  */
 
 interface AuthButtonProps {
   onAuthSuccess?: () => void; // Callback for when authentication succeeds
-  variant?: 'primary' | 'secondary' | 'tertiary';  // Match World UI Kit Button variant options  
+  variant?: 'primary' | 'secondary' | 'tertiary';  // Keep for compatibility but will use custom design  
   className?: string;
 }
 
 export const AuthButton = ({ 
   onAuthSuccess, 
-  variant = 'primary',
   className 
 }: AuthButtonProps) => {
   const [isPending, setIsPending] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isInstalled } = useMiniKit();
+  const { user, loading: sessionLoading, refreshSession } = useSession();
   const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
-  console.log('🚨 AuthButton component render:', { isInstalled, isPending });
+  console.log('🚨 AuthButton component render:', { isInstalled, isPending, user, sessionLoading });
 
   const onClick = useCallback(async () => {
     console.log('🚨 BASIC DEBUG: onClick handler called!');
@@ -98,15 +102,15 @@ export const AuthButton = ({
       if (data.status === 'success' && data.isValid) {
         console.log('🎉 Authentication completed successfully');
         
+        // Refresh session to get user data
+        await refreshSession();
+        
         // Call the success callback if provided (for parent component to refresh state)
         if (onAuthSuccess) {
           onAuthSuccess();
         } else {
-          // Fallback: refresh the router and page
+          // Just refresh the router, no need for window.location.reload()
           router.refresh();
-          setTimeout(() => {
-            window.location.reload();
-          }, 100);
         }
       } else {
         console.error('❌ SIWE verification failed:', data.message);
@@ -117,7 +121,43 @@ export const AuthButton = ({
     } finally {
       setIsPending(false);
     }
-  }, [isInstalled, isPending, router, onAuthSuccess]);
+  }, [isInstalled, isPending, router, onAuthSuccess, refreshSession]);
+
+  // Disconnect functionality
+  const handleDisconnect = useCallback(async () => {
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        // Refresh session to clear user data
+        await refreshSession();
+        setIsDropdownOpen(false);
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('❌ Disconnect error:', error);
+    }
+  }, [refreshSession, router]);
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   // Debug MiniKit status
   useEffect(() => {
@@ -127,6 +167,91 @@ export const AuthButton = ({
       isWorldApp: navigator.userAgent.includes('World')
     });
   }, [isInstalled]);
+
+  // Helper function to truncate wallet address
+  const truncateAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // If user is authenticated, show wallet value
+  if (user && !sessionLoading) {
+    return (
+      <div className={`relative ${className || ''}`} ref={dropdownRef}>
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          data-layer="span" 
+          className={`Span w-[70px] h-7 px-1.5 py-[3px] bg-white/5 rounded-full  outline-[0.50px] outline-offset-[-0.50px] outline-[#373a46] inline-flex flex-col justify-center items-center gap-2.5 overflow-hidden cursor-pointer hover:bg-white/10 transition-all duration-200 ${isDropdownOpen ? 'bg-white/10' : ''}`}
+        >
+          <div 
+            data-layer="Frame 2147224426" 
+            className="Frame2147224426 self-stretch inline-flex justify-start items-center gap-1"
+          >
+            <Image
+              src="/world-icon.svg"
+              alt="World Coin"
+              width={16}
+              height={16}
+              className="w-4 h-4"
+            />
+            <div 
+              data-layer="wallet-value" 
+              className="WalletValue justify-start text-[#d0d0d0] text-xs font-normal font-['Outfit']"
+            >
+              $806
+            </div>
+          </div>
+        </button>
+
+        {/* Dropdown Menu */}
+        {isDropdownOpen && (
+          <div className="absolute top-full right-0 mt-2 w-64 bg-[#1d283b] border border-[#373a46] rounded-lg shadow-lg overflow-hidden z-50">
+            {/* User Info Section */}
+            <div className="p-4 border-b border-[#373a46]">
+              <div className="flex items-center gap-3">
+                {user.profile_picture_url && (
+                  <Image
+                    src={user.profile_picture_url}
+                    alt="Profile"
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-white text-sm font-medium font-['Outfit'] truncate">
+                    {user.username || 'Anonymous'}
+                  </div>
+                  <div className="text-[#a0a0a0] text-xs font-['Outfit'] truncate">
+                    {truncateAddress(user.wallet_address)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Disconnect Button */}
+            <div className="p-2">
+              <button
+                onClick={handleDisconnect}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-[#373a46] rounded-md transition-colors duration-200"
+              >
+                <Image
+                  src="/signoff-icon.svg"
+                  alt="Disconnect"
+                  width={16}
+                  height={16}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium font-['Outfit']">
+                  Disconnect
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`flex flex-col items-center gap-4 ${className || ''}`}>
@@ -140,23 +265,30 @@ export const AuthButton = ({
         </div>
       )}
       
-      <LiveFeedback
-        label={{
-          failed: 'Failed to login',
-          pending: 'Logging in',
-          success: 'Logged in',
-        }}
-        state={isPending ? 'pending' : undefined}
-      >
-        <Button
+      <button
           onClick={onClick}
           disabled={isPending || !isInstalled}
-          size="lg"
-          variant={variant}
+          className={`
+            relative rounded-full transition-all duration-200 ease-in-out
+            ${isPending || !isInstalled 
+              ? 'bg-gray-300 cursor-not-allowed opacity-60' 
+              : 'bg-[#e9ff74] hover:bg-[#d4e668] active:bg-[#c1d35c] cursor-pointer'
+            }
+          `}
         >
-          {isInstalled ? '🔄 [NEW] Login with Wallet' : 'World App Required'}
-        </Button>
-      </LiveFeedback>
+          <div className="flex flex-row items-center justify-center relative w-full h-full">
+            <div className="flex flex-row gap-2.5 items-center justify-center px-5 py-[7px] relative w-full h-full">
+              <div className="font-semibold text-[12px] text-black text-nowrap leading-normal">
+                {isPending 
+                  ? 'Signing in...' 
+                  : !isInstalled 
+                    ? 'World App Required'
+                    : 'Sign in'
+                }
+              </div>
+            </div>
+          </div>
+        </button>
     </div>
   );
 };
