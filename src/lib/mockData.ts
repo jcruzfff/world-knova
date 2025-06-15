@@ -171,28 +171,6 @@ export const mockMarkets: Market[] = [
     updatedAt: getRandomPastDate(1)
   },
 
-  {
-    id: 'market_5',
-    title: 'Will it rain in San Francisco tomorrow?',
-    description: 'The weather forecast is showing mixed signals. What do you think?',
-    category: 'user_generated',
-    outcomeType: 'binary',
-    options: createBinaryOptions(),
-    minStake: 1,
-    maxStake: 50,
-    totalPool: 125,
-    startTime: getRandomPastDate(1),
-    endTime: getRandomFutureDate(1),
-    status: 'active',
-    resolutionCriteria: 'Based on official weather reports showing any measurable precipitation in San Francisco',
-    createdBy: mockCreators[2],
-    imageUrl: 'https://images.unsplash.com/photo-1534274867514-d5b47ef5b2bb?w=600&h=300&fit=crop',
-    tags: ['weather', 'san-francisco', 'rain'],
-    participantCount: 23,
-    viewCount: 67,
-    createdAt: getRandomPastDate(1),
-    updatedAt: getRandomPastDate(1)
-  },
 
   {
     id: 'market_6',

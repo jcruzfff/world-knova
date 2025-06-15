@@ -33,8 +33,7 @@ export const Navigation = () => {
     
     switch (newValue) {
       case 'create':
-        // TODO: Navigate to create page when implemented
-        console.log('Create page - Coming soon');
+        router.push('/create');
         break;
       case 'home':
         router.push('/');
