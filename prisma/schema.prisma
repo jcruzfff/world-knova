@@ -126,6 +126,9 @@ model User {
   // Market creation relation
   createdMarkets  Market[]
 
+  // Image uploads relation
+  uploadedImages  UploadedImage[]
+
   @@map("users")
 }
 
@@ -234,6 +237,7 @@ model Market {
   predictions  Prediction[]
   userMarkets  UserMarket[]
   challenges   Challenge[]
+  uploadedImages UploadedImage[]
 
   // Creator relationship for user-generated markets
   createdBy    String?  @map("created_by") // User ID of the creator (null for platform-created markets)
@@ -320,4 +324,37 @@ model Transaction {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
+}
+
+// Uploaded Images Tracking
+model UploadedImage {
+id          String   @id @default(cuid())
+fileName    String   @map("file_name")
+originalName String  @map("original_name")
+fileSize    Int      @map("file_size") // Size in bytes
+fileType    String   @map("file_type") // MIME type
+storagePath String   @unique @map("storage_path") // Path in Supabase storage
+publicUrl   String   @map("public_url") // Public access URL
+uploadType  String   @map("upload_type") // "market-option", "market-header", "profile", etc.
+
+// Relations
+uploadedBy  String   @map("uploaded_by") // User ID
+user        User     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+
+// Associated objects (optional)
+marketId    String?  @map("market_id") // If used for a market
+market      Market?  @relation(fields: [marketId], references: [id], onDelete: SetNull)
+
+// Metadata
+metadata    Json?    // Additional metadata like compression settings, original dimensions, etc.
+
+// Status
+isActive    Boolean  @default(true) @map("is_active") // Whether file is still in use
+isDeleted   Boolean  @default(false) @map("is_deleted") // Soft delete flag
+
+// Timestamps
+createdAt   DateTime @default(now()) @map("created_at")
+updatedAt   DateTime @updatedAt @map("updated_at")
+
+@@map("uploaded_images")
 }

@@ -20,8 +20,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={outfit.variable}>
+    <html lang="en" className={outfit.variable}>
+      <body className={outfit.className}>
         <Providers>{children}</Providers>
       </body>
     </html>

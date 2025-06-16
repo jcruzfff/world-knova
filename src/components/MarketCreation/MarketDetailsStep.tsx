@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { MarketCategory, MarketCategoryFilter, MarketOption } from '@/types/market';
 
@@ -15,6 +15,79 @@ interface MarketDetailsStepProps {
   onNext: () => void;
 }
 
+// Image compression utility
+const compressImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.8): Promise<File> => {
+  return new Promise((resolve) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.warn('Canvas context not available, using original file');
+        resolve(file);
+        return;
+      }
+
+      const img = new window.Image(); // Use window.Image explicitly
+      
+      img.onload = () => {
+        try {
+          // Calculate new dimensions while maintaining aspect ratio
+          let { width, height } = img;
+          
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw and compress
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg', // Always convert to JPEG for better compression
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                console.warn('Canvas blob creation failed, using original file');
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        } catch (error) {
+          console.warn('Image compression failed:', error);
+          resolve(file); // Fallback to original file
+        }
+      };
+      
+      img.onerror = () => {
+        console.warn('Image loading failed, using original file');
+        resolve(file); // Fallback to original file
+      };
+      
+      img.src = URL.createObjectURL(file);
+    } catch (error) {
+      console.warn('Image compression setup failed:', error);
+      resolve(file); // Fallback to original file
+    }
+  });
+};
+
 export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
   marketTitle,
   setMarketTitle,
@@ -27,7 +100,132 @@ export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
   onRemoveOption,
   onNext
 }) => {
+  const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
+  
   const isValid = marketTitle.trim() && !options.some(opt => !opt.title.trim());
+
+  // Remove image function
+  const handleRemoveImage = (optionId: string) => {
+    // Clean up the object URL
+    if (imagePreviewUrls[optionId]) {
+      URL.revokeObjectURL(imagePreviewUrls[optionId]);
+    }
+    
+    // Remove from all state
+    setImagePreviewUrls(prev => {
+      const newUrls = { ...prev };
+      delete newUrls[optionId];
+      return newUrls;
+    });
+    
+
+    
+    console.log('🗑️ Image removed for option:', optionId);
+  };
+
+  const handleImageSelection = async (optionId: string, file: File) => {
+    // Set loading state
+    setUploadingImages(prev => new Set(prev).add(optionId));
+
+    try {
+      let processedFile = file;
+      
+      // Check if file needs compression
+      if (file.size > 2 * 1024 * 1024) { // If larger than 2MB, compress it
+        console.log(`📦 Original file size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        
+        // Apply compression
+        processedFile = await compressImage(file, 800, 600, 0.8);
+        
+        console.log(`🗜️ Compressed file size: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+        
+        // If still too large, apply more aggressive compression
+        if (processedFile.size > 4 * 1024 * 1024) {
+          processedFile = await compressImage(file, 600, 400, 0.6);
+          console.log(`🗜️ More aggressive compression: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+        }
+      }
+
+      // Create a local URL for preview first
+      const previewUrl = URL.createObjectURL(processedFile);
+      
+      // Store the preview URL locally for immediate preview
+      setImagePreviewUrls(prev => ({ ...prev, [optionId]: previewUrl }));
+      
+      // Upload to server and get permanent URL
+      const formData = new FormData();
+      formData.append('file', processedFile);
+      formData.append('optionId', optionId); // Include option ID for tracking
+      
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('✅ Image uploaded successfully:', {
+          optionId,
+          imageId: result.data.id,
+          url: result.data.url
+        });
+        
+        // Call the parent's onImageUpload with the processed file for storage
+        onImageUpload(optionId, processedFile);
+      } else {
+        console.error('❌ Image upload failed:', result.error);
+        // Clean up on failure
+        handleRemoveImage(optionId);
+        alert(`Image upload failed: ${result.error}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Image processing/upload error:', error);
+      // Clean up on failure
+      handleRemoveImage(optionId);
+      alert('Image processing failed. Please try again.');
+    } finally {
+      // Remove loading state
+      setUploadingImages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(optionId);
+        return newSet;
+      });
+    }
+  };
+
+  // Handle file selection with validation
+  const handleFileSelect = async (optionId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+
+    // Show file size warning for very large files
+    if (file.size > 10 * 1024 * 1024) { // 10MB
+      const proceed = window.confirm(
+        `This image is ${(file.size / 1024 / 1024).toFixed(1)}MB. Large images will be compressed automatically. Continue?`
+      );
+      if (!proceed) return;
+    }
+
+    await handleImageSelection(optionId, file);
+  };
+
+  // Clean up object URLs when component unmounts or images change
+  React.useEffect(() => {
+    return () => {
+      Object.values(imagePreviewUrls).forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, [imagePreviewUrls]);
 
   return (
     <>
@@ -65,61 +263,100 @@ export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
         
         {/* Grid layout for all options */}
         <div className="grid grid-cols-2 gap-4">
-          {options.map((option, index) => (
-            <div key={option.id} className="space-y-3">
-              {/* Image Upload Area */}
-              <div className="aspect-square bg-[#1D283B] border-2 border-dashed border-[#373a46] rounded-xl flex flex-col items-center justify-center p-6 hover:border-[#e9ff74] transition-colors relative">
-                {option.imageUrl ? (
-                  <Image
-                    src={option.imageUrl}
-                    alt={`Option ${index + 1}`}
-                    width={120}
-                    height={120}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <label className="cursor-pointer flex flex-col items-center gap-2 text-center">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          onImageUpload(option.id, file);
-                        }
-                      }}
-                    />
-                    <svg className="w-8 h-8 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm text-[#a0a0a0]">+ Add an image</span>
-                  </label>
-                )}
-                
-                {/* Remove Button - only show for options beyond the first 2 */}
-                {index >= 2 && (
-                  <button
-                    onClick={() => onRemoveOption(option.id)}
-                    className="absolute top-2 right-2 p-1 bg-[#1D283B] border border-[#373a46] rounded-full text-[#a0a0a0] hover:text-red-400 hover:border-red-400 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
+          {options.map((option, index) => {
+            const isUploading = uploadingImages.has(option.id);
+            const previewUrl = imagePreviewUrls[option.id];
+            
+            return (
+              <div key={option.id} className="space-y-3">
+                {/* Image Upload Area - Made perfect square */}
+                <div className={`aspect-square bg-[#1D283B] border-2 border-dashed border-[#373a46] rounded-xl hover:border-[#e9ff74] transition-colors relative overflow-hidden ${
+                  isUploading || previewUrl ? '' : 'flex flex-col items-center justify-center p-6'
+                }`}>
+                  {isUploading ? (
+                    /* Loading State */
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                      <div className="w-8 h-8 border-2 border-[#e9ff74] border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm text-[#a0a0a0]">Processing...</span>
+                    </div>
+                  ) : previewUrl ? (
+                    /* Image Preview - Fill entire square area with no padding */
+                    <div className="w-full h-full relative">
+                      <Image
+                        src={previewUrl}
+                        alt={`Option ${index + 1}`}
+                        fill
+                        className="object-cover rounded-xl"
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                      />
+                      
+                      {/* Remove Image Button - Top Right */}
+                      <button
+                        onClick={() => handleRemoveImage(option.id)}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors z-20 shadow-lg"
+                        title="Remove image"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      
+                      {/* Replace Image Button - Center overlay */}
+                      <label className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center rounded-xl">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileSelect(option.id, e)}
+                        />
+                        <div className="text-white text-center">
+                          <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 002 2z" />
+                          </svg>
+                          <span className="text-xs">Replace</span>
+                        </div>
+                      </label>
+                    </div>
+                  ) : (
+                    /* Upload Placeholder */
+                    <label className="cursor-pointer flex flex-col items-center gap-2 text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleFileSelect(option.id, e)}
+                      />
+                      <svg className="w-8 h-8 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm text-[#a0a0a0]">+ Add an image</span>
+                    </label>
+                  )}
+                  
+                  {/* Remove Button - only show for options beyond the first 2 */}
+                  {index >= 2 && !isUploading && !previewUrl && (
+                    <button
+                      onClick={() => onRemoveOption(option.id)}
+                      className="absolute top-2 right-2 p-1 bg-[#1D283B] border border-[#373a46] rounded-full text-[#a0a0a0] hover:text-red-400 hover:border-red-400 transition-colors z-10"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
 
-              {/* Option Text Input */}
-              <input
-                type="text"
-                value={option.title}
-                onChange={(e) => onOptionChange(option.id, e.target.value)}
-                placeholder={`Selection ${index + 1}`}
-                className="w-full px-4 py-3 bg-[#1D283B] border border-[#373a46] rounded-xl text-white placeholder-[#a0a0a0] focus:outline-none focus:border-[#e9ff74] transition-colors"
-              />
-            </div>
-          ))}
+                {/* Option Text Input */}
+                <input
+                  type="text"
+                  value={option.title}
+                  onChange={(e) => onOptionChange(option.id, e.target.value)}
+                  placeholder={`Selection ${index + 1}`}
+                  className="w-full px-4 py-3 bg-[#1D283B] border border-[#373a46] rounded-xl text-white placeholder-[#a0a0a0] focus:outline-none focus:border-[#e9ff74] transition-colors"
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
