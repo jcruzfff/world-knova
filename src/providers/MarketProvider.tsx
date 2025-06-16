@@ -206,7 +206,13 @@ interface MarketContextType {
 }
 
 // Helper function to convert date strings back to Date objects
-function transformMarketDates(market: any): Market {
+function transformMarketDates(market: Omit<Market, 'startTime' | 'endTime' | 'resolutionTime' | 'createdAt' | 'updatedAt'> & {
+  startTime: string | Date;
+  endTime: string | Date;
+  resolutionTime?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}): Market {
   return {
     ...market,
     startTime: new Date(market.startTime),
@@ -217,7 +223,15 @@ function transformMarketDates(market: any): Market {
   };
 }
 
-function transformMarketsResponse(response: any): MarketsResponse {
+function transformMarketsResponse(response: Omit<MarketsResponse, 'markets'> & {
+  markets: Array<Omit<Market, 'startTime' | 'endTime' | 'resolutionTime' | 'createdAt' | 'updatedAt'> & {
+    startTime: string | Date;
+    endTime: string | Date;
+    resolutionTime?: string | Date | null;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+  }>;
+}): MarketsResponse {
   return {
     ...response,
     markets: response.markets.map(transformMarketDates)

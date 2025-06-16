@@ -78,7 +78,7 @@ export const ProfileCompletion = ({ user, onComplete }: ProfileCompletionProps) 
       } else {
         setError(data.message || 'Failed to complete profile');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);

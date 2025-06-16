@@ -1,12 +1,12 @@
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * Get user profile information
  * Returns current profile state and compliance status
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Get user from custom session
     const cookieStore = await cookies();

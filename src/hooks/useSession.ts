@@ -1,8 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 
-// TODO: Add proper user type
+// User interface for session
+interface SessionUser {
+  id: string;
+  username: string;
+  walletAddress: string;
+  profilePictureUrl?: string | null;
+  isProfileComplete: boolean;
+  isEligible: boolean;
+  verificationLevel?: string | null;
+  worldIdVerified: boolean;
+  age?: number | null;
+  countryCode?: string | null;
+  region?: string | null;
+  termsAcceptedAt?: Date | null;
+  privacyAcceptedAt?: Date | null;
+}
+
 export function useSession() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   const checkSession = useCallback(() => {

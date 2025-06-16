@@ -21,8 +21,8 @@ export default function CreateMarketPage() {
   const [marketTitle, setMarketTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<MarketCategory | 'none'>('none');
   const [options, setOptions] = useState<MarketOption[]>([
-    { id: '1', title: '' },
-    { id: '2', title: '' }
+    { id: '1', title: '', description: null, imageUrl: null, orderIndex: 0 },
+    { id: '2', title: '', description: null, imageUrl: null, orderIndex: 1 }
   ]);
   
   // Step 2: Funding details
@@ -32,12 +32,7 @@ export default function CreateMarketPage() {
   const [customAmount, setCustomAmount] = useState('');
   const [selectedDuration, setSelectedDuration] = useState('24 hour');
 
-  // Redirect if not authenticated
-  if (!loading && !user) {
-    router.push('/');
-    return null;
-  }
-
+  // Handle authentication states more gracefully
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0F111A] flex items-center justify-center">
@@ -46,10 +41,34 @@ export default function CreateMarketPage() {
     );
   }
 
+  // Show login prompt instead of immediate redirect
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#0F111A] flex flex-col items-center justify-center px-6">
+        <div className="text-center space-y-6 max-w-md">
+          <h1 className="text-2xl font-bold text-white">Create Prediction Market</h1>
+          <p className="text-gray-400">
+            You need to sign in to create prediction markets. Connect your wallet to get started.
+          </p>
+          <AuthButton onProfileComplete={() => {}} />
+          <button
+            onClick={() => router.push('/')}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            ← Back to Markets
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const handleAddOption = () => {
     const newOption: MarketOption = {
       id: Date.now().toString(),
-      title: ''
+      title: '',
+      description: null,
+      imageUrl: null,
+      orderIndex: options.length
     };
     setOptions([...options, newOption]);
   };
@@ -67,7 +86,12 @@ export default function CreateMarketPage() {
   };
 
   const handleImageUpload = (id: string, file: File) => {
-    // TODO: Implement image upload
+    // Create a temporary URL for the image preview
+    const imageUrl = URL.createObjectURL(file);
+    setOptions(options.map(option => 
+      option.id === id ? { ...option, imageUrl } : option
+    ));
+    // TODO: Upload to actual storage service
     console.log('Image upload for option', id, file);
   };
 
@@ -92,6 +116,12 @@ export default function CreateMarketPage() {
 
   const handleLaunch = async () => {
     try {
+      // Check authentication again before creating
+      if (!user) {
+        alert('Please sign in to create a market');
+        return;
+      }
+
       const durationMap = {
         '24 hour': 1,
         '1 week': 7,
@@ -117,11 +147,20 @@ export default function CreateMarketPage() {
 
       const result = await createMarket(marketData);
       if (result) {
-        router.push(`/markets/${result.id}`);
+        console.log('✅ Market created successfully:', result.id);
+        // Redirect to home page where the new market will be visible
+        router.push('/');
       }
     } catch (error) {
       console.error('Failed to create market:', error);
-      alert('Failed to create market. Please try again.');
+      
+      // More specific error handling
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('unauthorized') || errorMessage.includes('authentication')) {
+        alert('Your session has expired. Please sign in again.');
+      } else {
+        alert('Failed to create market. Please try again.');
+      }
     }
   };
 

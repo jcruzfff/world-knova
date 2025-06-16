@@ -1,7 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { MarketCategory, MarketCategoryFilter } from '@/types/market';
-import { MarketOption } from './types';
+import { MarketCategory, MarketCategoryFilter, MarketOption } from '@/types/market';
 
 interface MarketDetailsStepProps {
   marketTitle: string;

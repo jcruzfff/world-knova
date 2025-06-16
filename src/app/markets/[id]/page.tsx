@@ -1,10 +1,9 @@
 'use client';
 
 import { MarketDetail } from '@/components/Markets/MarketDetail';
-import { useMarket } from '@/hooks/useMarketData';
-import { getMarketById } from '@/lib/mockData';
+import { useMarkets } from '@/providers/MarketProvider';
 import { notFound } from 'next/navigation';
-import { use } from 'react';
+import { use, useEffect } from 'react';
 
 interface MarketDetailPageProps {
   params: Promise<{ id: string }>;
@@ -14,12 +13,16 @@ export default function MarketDetailPage({ params }: MarketDetailPageProps) {
   // Unwrap the params Promise using React.use()
   const { id } = use(params);
   
-  // Try to fetch from API first
-  const { market: currentMarket, isLoading: isLoadingMarket, error: marketError } = useMarket(id, true);
-  
-  // Fallback to centralized mock data if API fails or market not found
-  const fallbackMarket = getMarketById(id);
-  const market = currentMarket || fallbackMarket;
+  // Use the MarketProvider for consistent data management
+  const { state, fetchMarket } = useMarkets();
+  const { currentMarket, isLoadingMarket, marketError } = state;
+
+  // Fetch market data when component mounts
+  useEffect(() => {
+    if (id) {
+      fetchMarket(id);
+    }
+  }, [id, fetchMarket]);
 
   if (isLoadingMarket) {
     return (
@@ -33,12 +36,24 @@ export default function MarketDetailPage({ params }: MarketDetailPageProps) {
   }
 
   if (marketError) {
-    console.warn('Market API error, falling back to mock data:', marketError);
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error loading market: {marketError}</p>
+          <button 
+            onClick={() => fetchMarket(id)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  if (!market) {
+  if (!currentMarket) {
     notFound();
   }
 
-  return <MarketDetail market={market} />;
+  return <MarketDetail market={currentMarket} />;
 } 

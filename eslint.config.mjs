@@ -11,6 +11,21 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Global ignores for generated files
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/.next/**',
+      '**/out/**',
+      '**/dist/**',
+      '**/build/**',
+      // Ignore generated Prisma files
+      '**/prisma/generated/**',
+      '**/generated/**',
+      // Ignore any files with generated in the path
+      '**/*generated*/**',
+    ],
+  },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
     settings: { react: { version: 'detect' } },

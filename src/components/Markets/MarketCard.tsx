@@ -124,21 +124,41 @@ export const MarketCard = ({ market, onClick }: MarketCardProps) => {
           data-layer="Player Info" 
           className="PlayerInfo inline-flex justify-start items-center gap-1"
         >
-          <div 
-            data-layer="Player Icons" 
-            className="PlayerIcons flex justify-start items-center"
-          >
-            <div data-layer="Ellipse 11904" className="Ellipse11904 w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b]" />
-            <div data-layer="Ellipse 11905" className="Ellipse11905 w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b] -ml-2" />
-            <div data-layer="Ellipse 11906" className="Ellipse11906 w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b] -ml-2" />
-            <div data-layer="Ellipse 11907" className="Ellipse11907 w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b] -ml-2" />
-            <div data-layer="Ellipse 11908" className="Ellipse11908 w-4 h-4 bg-[#52617b] rounded-full border-[0.80px] border-[#1d283b] -ml-2" />
-          </div>
+          {/* Only show avatars if there are participants */}
+          {market.participantCount > 0 && market.recentParticipants && market.recentParticipants.length > 0 && (
+            <div 
+              data-layer="Player Icons" 
+              className="PlayerIcons flex justify-start items-center"
+            >
+              {market.recentParticipants.slice(0, 5).map((participant, index) => (
+                <div 
+                  key={participant.id}
+                  data-layer={`Participant ${index + 1}`}
+                  className={`w-4 h-4 rounded-full border-[0.80px] border-[#1d283b] ${index > 0 ? '-ml-2' : ''} relative overflow-hidden`}
+                >
+                  {participant.profilePictureUrl ? (
+                    <Image
+                      src={participant.profilePictureUrl}
+                      alt={participant.username}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#52617b] flex items-center justify-center">
+                      <span className="text-white text-[6px] font-bold">
+                        {participant.username.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <div 
             data-layer="Player Count" 
-            className="PlayerCount text-[#d0d0d0] text-xs font-normal font-['Outfit'] ml-1"
+            className={`PlayerCount text-[#d0d0d0] text-xs font-normal font-['Outfit'] ${market.participantCount > 0 ? 'ml-1' : ''}`}
           >
-            {market.participantCount || 49} players
+            {market.participantCount} {market.participantCount === 1 ? 'player' : 'players'}
           </div>
         </div>
       </div>

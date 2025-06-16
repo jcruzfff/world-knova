@@ -10,14 +10,22 @@ export type OutcomeType = 'binary' | 'multiple' | 'scalar';
 export interface MarketOption {
   id: string;
   title: string;
-  description?: string;
-  imageUrl?: string;
+  description?: string | null;
+  imageUrl?: string | null;
   orderIndex: number;
   
   // Display properties for UI (computed from stakes/pools)
-  odds?: number;           // Current odds multiplier (computed)
-  percentage?: number;     // Percentage of total pool (computed)
-  currentStake?: number;   // Current stake amount (computed)
+  odds?: number | null;           // Current odds multiplier (computed)
+  percentage?: number | null;     // Percentage of total pool (computed)
+  currentStake?: number | null;   // Current stake amount (computed)
+}
+
+// Market option for creation form (no computed fields)
+export interface MarketOptionInput {
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  // Note: id, orderIndex, odds, percentage, and currentStake are assigned by system
 }
 
 // Market creation form data
@@ -25,12 +33,12 @@ export interface CreateMarketRequest {
   title: string;
   description: string;
   category: MarketCategory;
-  customCategory?: string; // If category is 'custom'
-  options: Omit<MarketOption, 'id'>[];
+  customCategory?: string | null; // If category is 'custom'
+  options: MarketOptionInput[];
   endDate: Date;
   resolutionCriteria: string;
-  tags?: string[];
-  imageUrl?: string;
+  tags?: string[] | null;
+  imageUrl?: string | null;
 }
 
 // Full market data structure
@@ -44,9 +52,9 @@ export interface Market {
   options: MarketOption[];
   
   // Market configuration
-  minStake: number;
-  maxStake?: number;
-  totalPool: number;
+  minStake: number; // Will be bigint in smart contracts
+  maxStake?: number; // Will be bigint in smart contracts  
+  totalPool: number; // Will be bigint in smart contracts
   
   // Timing
   startTime: Date;
@@ -62,29 +70,36 @@ export interface Market {
   createdBy?: {
     id: string;
     username: string;
-    displayName?: string;
-    profilePictureUrl?: string;
-  };
-  creator?: string;        // Backward compatibility field
+    displayName?: string | null;
+    profilePictureUrl?: string | null;
+  } | null;
+  creator?: string | null;        // Backward compatibility field
   
   // Oracle data  
   oracleSource?: string;
   oracleId?: string;
   
   // Additional metadata for backwards compatibility
-  resolutionSource?: string;
-  rules?: string[];
+  resolutionSource?: string | null;
+  rules?: string[] | null;
   
   // Metadata
-  imageUrl?: string;
+  imageUrl?: string | null;
   tags: string[];
   
   // Display properties (computed/derived)
-  subtitle?: string;       // Short description for cards (computed from description)
+  subtitle?: string | null;       // Short description for cards (computed from description)
   
   // Stats
   participantCount: number;
   viewCount: number;
+  
+  // Recent participants for avatar display (up to 5 most recent)
+  recentParticipants?: Array<{
+    id: string;
+    profilePictureUrl?: string | null;
+    username: string;
+  }>;
   
   // Timestamps
   createdAt: Date;
@@ -103,12 +118,12 @@ export interface MarketsResponse {
 
 // Market filters for browsing
 export interface MarketFilters {
-  category?: MarketCategory;
-  status?: MarketStatus;
-  createdBy?: string; // User ID for filtering by creator
-  search?: string;
-  tags?: string[];
-  timeframe?: 'ending_soon' | 'new' | 'popular';
+  category?: MarketCategory | null;
+  status?: MarketStatus | null;
+  createdBy?: string | null; // User ID for filtering by creator
+  search?: string | null;
+  tags?: string[] | null;
+  timeframe?: 'ending_soon' | 'new' | 'popular' | null;
 }
 
 // Market sort options
@@ -123,9 +138,13 @@ export interface MarketSort {
 // API response wrapper
 export interface ApiResponse<T> {
   success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
+  data?: T | null;
+  error?: string | null;
+  message?: string | null;
+  metadata?: {
+    timestamp: Date;
+    requestId?: string | null;
+  } | null;
 }
 
 // Market creation states for form wizard

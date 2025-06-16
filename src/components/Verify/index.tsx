@@ -9,7 +9,11 @@ import { useState, useEffect } from 'react';
  * Users must verify they are human before participating in prediction markets
  * Read More: https://docs.world.org/mini-apps/commands/verify#verifying-the-proof
  */
-export const Verify = () => {
+interface VerifyProps {
+  onSuccess?: () => void; // Callback when verification succeeds
+}
+
+export const Verify = ({ onSuccess }: VerifyProps = {}) => {
   const { isInstalled } = useMiniKit();
   const [isWorldApp, setIsWorldApp] = useState(false);
   const [buttonState, setButtonState] = useState<
@@ -136,10 +140,12 @@ export const Verify = () => {
         setDebugInfo('✅ Verification successful!');
         console.log('✅ World ID verification successful!');
         
-        // Here you could trigger additional actions like:
-        // - Update user profile as verified
-        // - Enable additional features
-        // - Show success message
+        // Call the success callback if provided
+        if (onSuccess) {
+          setTimeout(() => {
+            onSuccess();
+          }, 1500); // Give a moment to show success, then proceed
+        }
         
         // Keep success state for 3 seconds, then reset
         setTimeout(() => {
@@ -187,7 +193,7 @@ export const Verify = () => {
         <Button
           onClick={() => console.log('Mock World ID verification (Device level)')}
           size="lg"
-          variant="tertiary"
+          variant="outline"
           className="w-full"
         >
           Mock Verify (Device) - Dev Only
@@ -209,7 +215,7 @@ export const Verify = () => {
       <div>
         <p className="text-lg font-semibold">Verify Your Humanity</p>
         <p className="text-sm text-gray-600 mt-1">
-          Prove you're a real person to participate in prediction markets
+          Prove you&apos;re a real person to participate in prediction markets
         </p>
         <div className="text-xs text-gray-500 mt-2">
           <p><strong>Action:</strong> {process.env.NEXT_PUBLIC_ACTION || 'knova-verify'}</p>
@@ -223,12 +229,10 @@ export const Verify = () => {
       )}
       
       <LiveFeedback
-        label={{
-          failed: 'Verification failed',
-          pending: 'Verifying your identity...',
-          success: 'Verified! You are human ✅',
-        }}
-        state={
+        failedLabel="Verification failed"
+        pendingLabel="Verifying your identity..."
+        successLabel="Verified! You are human ✅"
+        status={
           whichVerification === VerificationLevel.Device
             ? buttonState
             : undefined
@@ -239,7 +243,7 @@ export const Verify = () => {
           onClick={() => onClickVerify(VerificationLevel.Device)}
           disabled={buttonState === 'pending'}
           size="lg"
-          variant="tertiary"
+          variant="outline"
           className="w-full"
         >
           Verify (Device)
@@ -247,12 +251,10 @@ export const Verify = () => {
       </LiveFeedback>
       
       <LiveFeedback
-        label={{
-          failed: 'Verification failed',
-          pending: 'Verifying with Orb...',
-          success: 'Orb verified! Highest trust level ✅',
-        }}
-        state={
+        failedLabel="Verification failed"
+        pendingLabel="Verifying with Orb..."
+        successLabel="Orb verified! Highest trust level ✅"
+        status={
           whichVerification === VerificationLevel.Orb ? buttonState : undefined
         }
         className="w-full"
@@ -269,7 +271,7 @@ export const Verify = () => {
       </LiveFeedback>
       
       <div className="text-xs text-gray-500 mt-2">
-        <p><strong>Device:</strong> Verify using your device's biometrics</p>
+        <p><strong>Device:</strong> Verify using your device&apos;s biometrics</p>
         <p><strong>Orb:</strong> Highest verification level using World ID Orb</p>
       </div>
     </div>

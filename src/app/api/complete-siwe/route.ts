@@ -148,12 +148,12 @@ export async function POST(req: NextRequest) {
       user: sessionData,
     })
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Complete SIWE: Error in validation or processing', error)
     return NextResponse.json({
       status: 'error',
       isValid: false,
-      message: error.message || 'Unknown error occurred',
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
     })
   }
 } 

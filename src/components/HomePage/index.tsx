@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMarkets } from '@/providers/MarketProvider';
-import { MarketCategoryFilter } from '@/types/market';
+import { MarketCategoryFilter, Market } from '@/types/market';
 import { AuthButton } from '@/components/AuthButton';
 import { MarketCard } from '@/components/Markets/MarketCard';
 import { FeaturedMarketCard } from '@/components/Markets/FeaturedMarketCard';
@@ -139,12 +139,12 @@ export default function HomePage() {
     );
   }
 
-  // Select featured markets (first 3 markets for carousel)
-  const featuredMarkets = state.markets.slice(0, 3);
-  console.log('🌟 HomePage - Featured markets:', featuredMarkets.map(m => ({ id: m.id, title: m.title })));
+  // Featured markets - empty for now (admin will select these later)
+  const featuredMarkets: Market[] = []; // TODO: Admin-selected featured markets
+  console.log('🌟 HomePage - Featured markets:', featuredMarkets.length);
 
-  // Filter remaining markets for "All Markets" section (skip first 3)
-  const allMarketsData = state.markets.slice(3, 9); // Show next 6 markets
+  // All Markets section - show all user-created markets
+  const allMarketsData = state.markets; // Show all markets
   console.log('📊 HomePage - All markets data:', allMarketsData.length);
 
   // Filter by category if needed
@@ -197,39 +197,60 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Featured Markets Section - Horizontal Carousel */}
+        {/* Featured Markets Section */}
         <section className="mb-8">
           <div className="flex justify-between items-center px-[14px] mb-4">
             <h2 className="text-white text-xl font-medium">Featured Markets</h2>
-            <div className="flex gap-1">
-              {featuredMarkets.map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-                    index === activeCardIndex ? 'bg-white' : 'bg-white/30'
-                  }`}
-                />
-              ))}
-            </div>
+            {featuredMarkets.length > 0 && (
+              <div className="flex gap-1">
+                {featuredMarkets.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                      index === activeCardIndex ? 'bg-white' : 'bg-white/30'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
           
-          {/* Horizontal Scrolling Container */}
-          <div className="px-[14px] overflow-hidden">
-            <div 
-              ref={scrollContainerRef}
-              className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory -mr-[14px] pr-12"
-              onScroll={handleScroll}
-            >
-              {featuredMarkets.map((market) => (
-                <div key={market.id} className="snap-start">
-                  <FeaturedMarketCard 
-                    market={market}
-                    onClick={() => handleMarketClick(market.id)}
-                  />
-                </div>
-              ))}
+          {featuredMarkets.length > 0 ? (
+            /* Horizontal Scrolling Container */
+            <div className="px-[14px] overflow-hidden">
+              <div 
+                ref={scrollContainerRef}
+                className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory -mr-[14px] pr-12"
+                onScroll={handleScroll}
+              >
+                {featuredMarkets.map((market) => (
+                  <div key={market.id} className="snap-start">
+                    <FeaturedMarketCard 
+                      market={market}
+                      onClick={() => handleMarketClick(market.id)}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Coming Soon Message */
+            <div className="px-[14px]">
+              <div className="bg-[#1D283B] border border-[#373a46] rounded-xl p-8 text-center">
+                <div className="mb-3">
+                  <div className="w-12 h-12 bg-[#373a46] rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-white font-semibold text-lg font-['Outfit']">Featured Markets Coming Soon</h3>
+                  <p className="text-[#a0a0a0] text-sm font-['Outfit'] mt-2">
+                    Our team is curating the best prediction markets for this section
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Category Filter */}
@@ -260,9 +281,23 @@ export default function HomePage() {
                   onClick={() => handleMarketClick(market.id)}
                 />
               ))
+            ) : state.markets.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="bg-[#1D283B] border border-[#373a46] rounded-xl p-8">
+                  <div className="w-12 h-12 bg-[#373a46] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-white font-semibold text-lg font-['Outfit'] mb-2">No Markets Yet</h3>
+                  <p className="text-[#a0a0a0] text-sm font-['Outfit']">
+                    Be the first to create a prediction market!
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="text-center py-8">
-                <div className="text-[#9CA3AF]">No markets found</div>
+                <div className="text-[#9CA3AF]">No markets found in this category</div>
               </div>
             )}
           </div>

@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPaginatedMarkets, mockMarkets } from '@/lib/mockData';
-import { MarketCategory, MarketStatus, CreateMarketRequest, Market } from '@/types/market';
+import { MarketCategory, MarketStatus, CreateMarketRequest, Market, OutcomeType } from '@/types/market';
 import { cookies } from 'next/headers';
+import { prisma } from '@/lib/prisma';
+
+// Define the expected structure for Prisma JSON outcomes
+interface PrismaMarketOutcome {
+  id: string;
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  orderIndex: number;
+}
 
 // GET /api/markets - List markets with filters and pagination
 export async function GET(request: NextRequest) {
@@ -19,13 +28,111 @@ export async function GET(request: NextRequest) {
 
     console.log('Markets API GET:', { page, limit, category, status, search, createdBy });
 
-    // Get paginated results
-    const result = getPaginatedMarkets(page, limit, {
-      category: category || undefined,
-      status: status || undefined,
-      search,
-      createdBy
+    // Build where clause for Prisma
+    const where: Record<string, unknown> = {};
+    
+    if (category) {
+      where.category = category;
+    }
+    
+    if (status) {
+      where.status = status;
+    }
+    
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (createdBy) {
+      where.createdBy = createdBy;
+    }
+
+    // Get total count for pagination
+    const totalCount = await prisma.market.count({ where });
+
+    // Get paginated markets from database
+    const markets = await prisma.market.findMany({
+      where,
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            profilePictureUrl: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
     });
+
+    // Transform database results to Market interface
+    const transformedMarkets: Market[] = markets.map(market => {
+      // Transform database result using proper type assertion
+      const outcomes = (market.outcomes as unknown as PrismaMarketOutcome[]) || [];
+      const options = outcomes.map((outcome, index) => ({
+        id: outcome?.id || `opt_${index}`,
+        title: outcome?.title || `Option ${index + 1}`,
+        description: outcome?.description || null,
+        imageUrl: outcome?.imageUrl || null,
+        orderIndex: outcome?.orderIndex || index,
+        odds: null,
+        percentage: null,
+        currentStake: null
+      }));
+
+      return {
+        id: market.id,
+        title: market.title,
+        description: market.description,
+        category: market.category as MarketCategory,
+        customCategory: undefined,
+        outcomeType: market.outcomeType as OutcomeType,
+        options,
+        minStake: market.minStake,
+        maxStake: market.maxStake || undefined,
+        totalPool: market.totalPool,
+        startTime: market.startTime,
+        endTime: market.endTime,
+        resolutionTime: market.resolutionTime || undefined,
+        status: market.status as MarketStatus,
+        resolvedOutcome: market.resolvedOutcome || undefined,
+        resolutionCriteria: market.resolutionCriteria,
+        createdBy: market.creator ? {
+          id: market.creator.id,
+          username: market.creator.username || 'Anonymous',
+          displayName: market.creator.displayName || market.creator.username || 'Anonymous',
+          profilePictureUrl: market.creator.profilePictureUrl || undefined
+        } : null,
+        creator: market.createdBy || null,
+        oracleSource: market.oracleSource || undefined,
+        oracleId: market.oracleId || undefined,
+        resolutionSource: undefined,
+        rules: undefined,
+        imageUrl: market.imageUrl || undefined,
+        tags: market.tags,
+        subtitle: null,
+        participantCount: market.participantCount,
+        viewCount: market.viewCount,
+        recentParticipants: [], // Empty since we don't have predictions implemented yet
+        createdAt: market.createdAt,
+        updatedAt: market.updatedAt
+      };
+    });
+
+    const result = {
+      markets: transformedMarkets,
+      totalCount,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / limit),
+      hasNextPage: page < Math.ceil(totalCount / limit),
+      hasPreviousPage: page > 1
+    };
 
     console.log('Markets API GET - Success:', { 
       returnedMarkets: result.markets.length, 
@@ -87,54 +194,101 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Generate new market ID
-    const newMarketId = `market_${Date.now()}`;
-
-    // Create new market object
-    const newMarket: Market = {
-      id: newMarketId,
-      title: marketData.title,
-      description: marketData.description,
-      category: marketData.category,
-      customCategory: marketData.customCategory,
-      outcomeType: marketData.options.length === 2 ? 'binary' : 'multiple',
-      options: marketData.options.map((option, index) => ({
-        id: `opt_${index}`,
-        title: option.title,
-        description: option.description,
-        imageUrl: option.imageUrl,
-        orderIndex: index
-      })),
-      minStake: 1,
-      maxStake: 1000,
-      totalPool: 0,
-      startTime: new Date(),
-      endTime: marketData.endDate,
-      status: 'draft', // Start as draft for user review
-      resolutionCriteria: marketData.resolutionCriteria,
-      createdBy: {
-        id: user.id,
-        username: user.username || 'Anonymous',
-        displayName: user.displayName || user.username || 'Anonymous',
-        profilePictureUrl: user.profilePictureUrl
+    // Create new market in database using Prisma
+    const newMarket = await prisma.market.create({
+      data: {
+        title: marketData.title,
+        description: marketData.description,
+        category: marketData.category || 'user_generated',
+        outcomeType: 'binary', // Default to binary for now, could be determined by options length
+        outcomes: marketData.options.map((option, index) => ({
+          id: `option_${index}`,
+          title: option.title,
+          description: option.description || null,
+          imageUrl: option.imageUrl || null,
+          orderIndex: index
+        })),
+        status: 'active',
+        minStake: 1.0,
+        maxStake: 1000.0,
+        totalPool: 0.0,
+        startTime: new Date(),
+        endTime: marketData.endDate,
+        resolutionCriteria: marketData.resolutionCriteria,
+        imageUrl: marketData.imageUrl || null,
+        tags: marketData.tags || [],
+        createdBy: user.id,
+        participantCount: 0,
+        viewCount: 0
       },
-      imageUrl: marketData.imageUrl,
-      tags: marketData.tags || [],
-      participantCount: 0,
-      viewCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            profilePictureUrl: true
+          }
+        }
+      }
+    });
+
+    console.log('✅ Market created successfully:', newMarket.id);
+
+    // Convert to Market interface format for response
+    const outcomes = (newMarket.outcomes as unknown as PrismaMarketOutcome[]) || [];
+    const options = outcomes.map((outcome, index) => ({
+      id: outcome?.id || `opt_${index}`,
+      title: outcome?.title || `Option ${index + 1}`,
+      description: outcome?.description || null,
+      imageUrl: outcome?.imageUrl || null,
+      orderIndex: outcome?.orderIndex || index,
+      odds: null,
+      percentage: null,
+      currentStake: null
+    }));
+
+    const transformedMarket: Market = {
+      id: newMarket.id,
+      title: newMarket.title,
+      description: newMarket.description,
+      category: newMarket.category as MarketCategory,
+      customCategory: undefined, // Not used in new schema
+      outcomeType: newMarket.outcomeType as OutcomeType,
+      options,
+      minStake: newMarket.minStake,
+      maxStake: newMarket.maxStake || undefined,
+      totalPool: newMarket.totalPool,
+      startTime: newMarket.startTime,
+      endTime: newMarket.endTime,
+      resolutionTime: newMarket.resolutionTime || undefined,
+      status: newMarket.status as MarketStatus,
+      resolvedOutcome: newMarket.resolvedOutcome || undefined,
+      resolutionCriteria: newMarket.resolutionCriteria,
+      createdBy: newMarket.creator ? {
+        id: newMarket.creator.id,
+        username: newMarket.creator.username || 'Anonymous',
+        displayName: newMarket.creator.displayName || newMarket.creator.username || 'Anonymous',
+        profilePictureUrl: newMarket.creator.profilePictureUrl || undefined
+      } : null,
+      creator: newMarket.createdBy || null,
+      oracleSource: newMarket.oracleSource || undefined,
+      oracleId: newMarket.oracleId || undefined,
+      resolutionSource: undefined, // Not in new schema
+      rules: undefined, // Not in new schema
+      imageUrl: newMarket.imageUrl || undefined,
+      tags: newMarket.tags,
+      subtitle: null,
+      participantCount: newMarket.participantCount,
+      viewCount: newMarket.viewCount,
+      recentParticipants: [], // Empty since we don't have predictions implemented yet
+      createdAt: newMarket.createdAt,
+      updatedAt: newMarket.updatedAt
     };
-
-    // In a real app, this would save to database
-    // For now, we'll add to our mock data array
-    mockMarkets.push(newMarket);
-
-    console.log('✅ Market created successfully:', newMarketId);
 
     return NextResponse.json({
       success: true,
-      data: newMarket,
+      data: transformedMarket,
       message: 'Market created successfully as draft'
     });
 

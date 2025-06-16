@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Verify } from '@/components/Verify';
 
 interface SessionBasedProfileCompletionProps {
   user: {
@@ -33,6 +34,7 @@ const MIN_AGE = 18;
  * Handles compliance checking and calls the API for profile completion
  */
 export const SessionBasedProfileCompletion = ({ user, onCompleteAction }: SessionBasedProfileCompletionProps) => {
+  const [currentStep, setCurrentStep] = useState(1); // 1: WorldID, 2: Profile
   const [formData, setFormData] = useState({
     age: user.age?.toString() || '',
     countryCode: user.countryCode || '',
@@ -134,22 +136,63 @@ export const SessionBasedProfileCompletion = ({ user, onCompleteAction }: Sessio
     }
   };
 
+  const handleWorldIdSuccess = () => {
+    setCurrentStep(2);
+  };
+
   return (
     <div className="bg-[#1D283B] text-white overflow-hidden">
       {/* Header */}
       <div className="px-6 py-6">
         <div className="flex items-center justify-between mb-2">
           <div>
-      
+            <h2 className="text-xl font-bold text-white font-['Outfit']">
+              {currentStep === 1 ? 'Verify Your Identity' : 'Complete Your Profile'}
+            </h2>
             <p className="text-[#a0a0a0] font-['Outfit'] mt-1">
-              Hi {user.username}! Let&apos;s set up your account to access prediction markets.
+              {currentStep === 1 
+                ? 'First, verify you\'re human with World ID to access prediction markets.'
+                : `Hi ${user.username}! Let's set up your account to access prediction markets.`
+              }
             </p>
           </div>
         </div>
       </div>
 
-      {/* Form Content */}
+      {/* Content */}
       <div className="px-6 pb-6">
+        {currentStep === 1 ? (
+          /* World ID Verification Step */
+          <div className="space-y-6">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-[#e9ff74] rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-white">World ID Verification Required</h3>
+              <p className="text-[#a0a0a0] text-sm max-w-sm mx-auto">
+                To ensure fair and secure predictions, we need to verify you&apos;re a unique human person using World ID.
+              </p>
+            </div>
+            
+            {/* World ID Component */}
+            <Verify onSuccess={handleWorldIdSuccess} />
+            
+            {/* For development - skip button */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="pt-4 border-t border-[#373a46]">
+                <button
+                  onClick={handleWorldIdSuccess}
+                  className="w-full py-3 text-[#a0a0a0] hover:text-white transition-colors text-sm"
+                >
+                  Skip World ID (Development Only)
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Profile Completion Step */
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Age Verification Section */}
           <div className="space-y-4">
@@ -307,6 +350,7 @@ export const SessionBasedProfileCompletion = ({ user, onCompleteAction }: Sessio
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );
