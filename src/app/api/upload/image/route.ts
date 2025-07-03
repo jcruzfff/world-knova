@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { uploadImage } from '@/lib/supabase';
-import { prisma } from '@/lib/prisma';
+import { supabaseService } from '@/lib/supabase-client';
 
-// Configuration
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+// Configuration constants are defined inline where used
 
 // GET /api/upload/image - Get uploaded images by option IDs
 export async function GET(request: NextRequest) {
@@ -21,24 +19,22 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get images for these option IDs from this user
-    const images = await prisma.uploadedImage.findMany({
-      where: {
-        uploadedBy: userId,
-        isActive: true,
-        isDeleted: false,
-        metadata: {
-          path: ['optionId'],
-          in: optionIds
-        }
-      },
-      select: {
-        id: true,
-        publicUrl: true,
-        metadata: true,
-        createdAt: true
-      }
-    });
+    // Get images for these option IDs from this user using Supabase
+    const { data: images, error } = await supabaseService['client']
+      .from('uploaded_images')
+      .select('id, public_url, metadata, created_at')
+      .eq('uploaded_by', userId)
+      .eq('is_active', true)
+      .eq('is_deleted', false)
+      .in('metadata->>optionId', optionIds);
+
+    if (error) {
+      console.error('❌ Get images database error:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to retrieve images'
+      }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
@@ -117,34 +113,46 @@ export async function POST(request: NextRequest) {
     });
 
     // Upload to Supabase Storage
-    const uploadResult = await uploadImage(file, user.id, 'market-option');
+    const uploadResult = await uploadImage(file, user.id);
     
     console.log('✅ Image uploaded successfully:', {
       path: uploadResult.path,
       url: uploadResult.url
     });
 
-    // Store image record in database
-    const imageRecord = await prisma.uploadedImage.create({
-      data: {
-        fileName: `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${file.type.split('/')[1]}`,
-        originalName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        storagePath: uploadResult.path,
-        publicUrl: uploadResult.url,
-        uploadType: 'market-option',
-        uploadedBy: user.id,
+    // Store image record in database using Supabase
+    const { data: imageRecord, error } = await supabaseService['client']
+      .from('uploaded_images')
+      .insert([{
+        file_name: `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${file.type.split('/')[1]}`,
+        original_name: file.name,
+        file_size: file.size,
+        file_type: file.type,
+        storage_path: uploadResult.path,
+        public_url: uploadResult.url,
+        upload_type: 'market-option',
+        uploaded_by: user.id,
         // Associate with market if provided (will be set when market is created)
-        marketId: marketId || null,
+        market_id: marketId || null,
         metadata: {
           compression: 'auto',
           originalSize: file.size,
           optionId: optionId || null, // Store which option this image is for
           uploadContext: 'market-creation'
-        }
-      }
-    });
+        },
+        is_active: true,
+        is_deleted: false
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('💾 Database insert error:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to save image record'
+      }, { status: 500 });
+    }
 
     console.log('💾 Image record created in database:', imageRecord.id);
 
@@ -181,32 +189,38 @@ export async function PATCH(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Update all images for these option IDs to associate with the market
-    const updateResult = await prisma.uploadedImage.updateMany({
-      where: {
-        uploadedBy: userId,
-        metadata: {
-          path: ['optionId'],
-          in: optionIds
-        },
-        isActive: true,
-        isDeleted: false
-      },
-      data: {
-        marketId: marketId
+    // Update all images for these option IDs to associate with the market using Supabase
+    let updatedCount = 0;
+    for (const optionId of optionIds) {
+      const { error, count } = await supabaseService['client']
+        .from('uploaded_images')
+        .update({ market_id: marketId })
+        .eq('uploaded_by', userId)
+        .eq('metadata->>optionId', optionId)
+        .eq('is_active', true)
+        .eq('is_deleted', false);
+
+      if (error) {
+        console.error('❌ Update images error:', error);
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to update images with market ID'
+        }, { status: 500 });
       }
-    });
+
+      updatedCount += count || 0;
+    }
 
     console.log('🔗 Updated images with market ID:', {
       marketId,
       optionIds,
-      updatedCount: updateResult.count
+      updatedCount: updatedCount
     });
 
     return NextResponse.json({
       success: true,
       data: {
-        updatedCount: updateResult.count,
+        updatedCount: updatedCount,
         marketId
       }
     });

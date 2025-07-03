@@ -20,7 +20,7 @@ const categoryConfig = {
     name: 'Crypto'
   },
   user_generated: {
-    icon: '/user-icon.svg', // fallback
+    icon: '/user-icon.svg',
     color: '#E187FF',
     name: 'User'
   }
@@ -139,14 +139,14 @@ export const MarketCard = ({ market, onClick }: MarketCardProps) => {
                   {participant.profilePictureUrl ? (
                     <Image
                       src={participant.profilePictureUrl}
-                      alt={participant.username}
+                      alt={participant.username || 'User'}
                       fill
                       className="object-cover"
                     />
                   ) : (
                     <div className="w-full h-full bg-[#52617b] flex items-center justify-center">
                       <span className="text-white text-[6px] font-bold">
-                        {participant.username.charAt(0).toUpperCase()}
+                        {(participant.username || 'U').charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}

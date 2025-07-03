@@ -1,283 +1,575 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
-# Type System Conventions for Knova
+# Knova Type System Architecture
 
-**Context**: Knova is a prediction market application built as a World Mini-App. All type definitions should be designed to facilitate easy transformation to smart contract logic when ready to move from mock data to on-chain implementation.
+**Context**: Knova is a World Mini-App prediction market platform migrating from Prisma to Supabase for unified data and storage management.
 
-## **Core Type Principles**
+## **Core Principles**
 
-- **Use existing application types first**: Always check [market.ts](mdc:src/types/market.ts) and related type files before creating new types
-- **Smart contract ready**: Design all types to easily map to Solidity structs and on-chain data
-- **Consistent naming**: Use camelCase for JavaScript/TypeScript, prepare for snake_case smart contract equivalents
-- **Immutable references**: Use `readonly` for arrays and objects that shouldn't be mutated
-- **Explicit null handling**: Use union types with `null` rather than `undefined` where data might not exist
+- **Supabase-first**: All types designed for direct Supabase PostgreSQL integration
+- **Smart contract ready**: Prepare types for future blockchain migration
+- **Consistent naming**: Use camelCase for TypeScript, snake_case for database
+- **Explicit null handling**: Use `null` instead of `undefined` for optional database fields
+- **Type safety**: Leverage TypeScript's strict mode and branded types
 
-## **Market-Specific Type Guidelines**
+## **Database Entity Types**
 
-### **Market Entity Types**
+### **User System Types**
 ```typescript
-// ✅ DO: Follow existing Market interface structure from market.ts
-interface Market {
-  id: string;                    // Maps to uint256 tokenId on-chain
-  title: string;                 // Store as IPFS hash reference
-  description: string;           // Store as IPFS hash reference
-  category: MarketCategory;      // Maps to enum Category
-  outcomeType: 'binary' | 'multiple'; // Maps to enum OutcomeType
-  options: readonly MarketOption[];     // Maps to struct MarketOption[]
-  // ... other fields following established pattern
+// ✅ Main User type (matches Supabase schema)
+export interface User {
+  id: string;                    // UUID primary key
+  email?: string | null;
+  emailVerified?: Date | null;
+  image?: string | null;
+  name?: string | null;
+  walletAddress: string;         // Unique wallet address
+  username?: string | null;      // Unique username
+  displayName?: string | null;   // Custom display name
+  profilePictureUrl?: string | null;
+  
+  // World ID & Verification
+  worldIdVerified: boolean;
+  verificationLevel?: string | null; // 'device' | 'orb'
+  worldIdNullifier?: string | null;  // Unique World ID nullifier
+  verifiedAt?: Date | null;
+  
+  // Profile & Compliance
+  isProfileComplete: boolean;
+  age?: number | null;
+  countryCode?: string | null;   // ISO 2-letter code
+  region?: string | null;
+  isEligible: boolean;
+  termsAcceptedAt?: Date | null;
+  privacyAcceptedAt?: Date | null;
+  
+  // Engagement & Streaks
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate?: Date | null;
+  totalVisitDays: number;
+  
+  // Preferences
+  preferredCurrency: string;     // 'WLD' | 'USDC' | 'ETH'
+  darkMode: boolean;
+  favoriteCategories: string[]; // Array of MarketCategory values
+  
+  // Privacy Settings
+  profileVisibility: 'public' | 'verified_only' | 'private';
+  showPredictionHistory: boolean;
+  showStreak: boolean;
+  allowChallenges: boolean;
+  
+  // Notification Settings
+  notifyFollows: boolean;
+  notifyChallenges: boolean;
+  notifyMarketUpdates: boolean;
+  notifyResults: boolean;
+  notifyStreakReminders: boolean;
+  
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// ❌ DON'T: Create inconsistent market types
-interface PredictionMarket {
-  marketId: number;              // Inconsistent with Market.id
-  name: string;                  // Inconsistent with Market.title
-  choices: string[];             // Inconsistent with Market.options
+// Subset for public profile display
+export interface UserProfile {
+  id: string;
+  username?: string | null;
+  displayName?: string | null;
+  profilePictureUrl?: string | null;
+  worldIdVerified: boolean;
+  currentStreak: number;
+  longestStreak: number;
+  profileVisibility: string;
+  showPredictionHistory: boolean;
+  showStreak: boolean;
+}
+
+// User creation/update types
+export interface CreateUserRequest {
+  email?: string;
+  walletAddress: string;
+  username?: string;
+  displayName?: string;
+  profilePictureUrl?: string;
+  worldIdNullifier?: string;
+  verificationLevel?: 'device' | 'orb';
+}
+
+export interface UpdateUserRequest {
+  username?: string;
+  displayName?: string;
+  profilePictureUrl?: string;
+  age?: number;
+  countryCode?: string;
+  region?: string;
+  preferredCurrency?: string;
+  darkMode?: boolean;
+  favoriteCategories?: string[];
+  profileVisibility?: 'public' | 'verified_only' | 'private';
+  showPredictionHistory?: boolean;
+  showStreak?: boolean;
+  allowChallenges?: boolean;
+  notifyFollows?: boolean;
+  notifyChallenges?: boolean;
+  notifyMarketUpdates?: boolean;
+  notifyResults?: boolean;
+  notifyStreakReminders?: boolean;
 }
 ```
 
-### **User and Creator Types**
+### **Market System Types**
 ```typescript
-// ✅ DO: Use MarketCreator interface for user references
-interface MarketCreator {
-  id: string;                    // World ID hash for on-chain verification
-  username?: string | null;      // Optional display name
-  displayName?: string | null;   // Human-readable name
-  profilePictureUrl?: string | null; // IPFS hash for profile images
+// Market categories
+export type MarketCategory = 'sports' | 'crypto' | 'music' | 'user_generated';
+export type MarketCategoryFilter = MarketCategory | 'all';
+
+// Market status lifecycle
+export type MarketStatus = 'draft' | 'pending_approval' | 'active' | 'paused' | 'closed' | 'resolved' | 'cancelled';
+
+// Outcome types
+export type OutcomeType = 'binary' | 'multiple' | 'scalar';
+
+// Market option/outcome
+export interface MarketOption {
+  id: string;
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  orderIndex: number;
+  
+  // Computed fields (not stored in DB)
+  odds?: number | null;
+  percentage?: number | null;
+  currentStake?: number | null;
 }
 
-// ✅ DO: Handle nullable user data consistently
-interface UserProfile {
-  worldId: string;               // Required World ID for verification
-  username?: string | null;      // Optional fields are nullable, not undefined
-  isEligible: boolean;           // Required compliance check
-  kycStatus: 'pending' | 'verified' | 'rejected'; // Enum for on-chain status
-}
-```
-
-### **Financial and Stake Types**
-```typescript
-// ✅ DO: Use consistent units for financial data
-interface StakeData {
-  amount: bigint;                // Use bigint for precise token amounts
-  token: string;                 // Contract address of stake token
-  timestamp: Date;               // JavaScript Date for frontend, unix timestamp for contracts
+// Market option input for creation
+export interface MarketOptionInput {
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  // id and orderIndex will be generated
 }
 
-// ✅ DO: Prepare for decimal precision in smart contracts
-interface MarketPool {
-  totalStaked: bigint;           // Total wei/smallest unit amount
-  stakeToken: string;            // ERC20 contract address
-  minStake: bigint;              // Minimum stake in wei
-  maxStake: bigint;              // Maximum stake in wei
-}
-
-// ❌ DON'T: Use floating point for financial data
-interface BadStakeData {
-  amount: number;                // Precision loss risk
-  totalPool: number;             // Rounding errors
-}
-```
-
-### **API Response and Request Types**
-```typescript
-// ✅ DO: Use standardized API response wrapper
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  metadata?: {
-    timestamp: Date;
-    requestId?: string;
-  };
-}
-
-// ✅ DO: Separate request/response types from entity types
-interface CreateMarketRequest {
+// ✅ Main Market type (matches Supabase schema)
+export interface Market {
+  id: string;                    // UUID primary key
   title: string;
   description: string;
   category: MarketCategory;
-  options: MarketOptionInput[];  // Different from MarketOption (no IDs)
-  endDate: Date;
-  // ... other creation fields
+  customCategory?: string | null; // For user_generated markets
+  outcomeType: OutcomeType;
+  options: MarketOption[];       // Stored as JSON in DB
+  
+  // Market configuration
+  minStake: number;              // Will be bigint for contracts
+  maxStake?: number | null;      // Will be bigint for contracts
+  totalPool: number;             // Will be bigint for contracts
+  
+  // Timing
+  startTime: Date;
+  endTime: Date;
+  resolutionTime?: Date | null;
+  
+  // Status & resolution
+  status: MarketStatus;
+  resolvedOutcome?: string | null;
+  resolutionCriteria: string;
+  
+  // Creator (for user-generated markets)
+  createdBy?: string | null;     // User ID
+  creator?: UserProfile | null;  // Populated via join
+  
+  // Oracle data
+  oracleSource?: string | null;  // 'sportradar' | 'manual' | etc.
+  oracleId?: string | null;
+  
+  // Metadata
+  imageUrl?: string | null;
+  tags: string[];
+  
+  // Statistics
+  participantCount: number;
+  viewCount: number;
+  
+  // Recent participants (computed)
+  recentParticipants?: UserProfile[];
+  
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-interface MarketOptionInput {
+// Market creation request
+export interface CreateMarketRequest {
   title: string;
-  description?: string;
-  imageUrl?: string;
-  // No id or orderIndex - those are assigned by system
+  description: string;
+  category: MarketCategory;
+  customCategory?: string | null;
+  options: MarketOptionInput[];
+  endDate: Date;
+  resolutionCriteria: string;
+  tags?: string[];
+  imageUrl?: string | null;
+  minStake?: number;
+  maxStake?: number;
+}
+
+// Market filters and pagination
+export interface MarketFilters {
+  category?: MarketCategory | null;
+  status?: MarketStatus | null;
+  createdBy?: string | null;
+  search?: string | null;
+  tags?: string[] | null;
+  timeframe?: 'ending_soon' | 'new' | 'popular' | null;
+}
+
+export type MarketSortBy = 'created_at' | 'end_date' | 'total_pool' | 'participant_count' | 'title';
+export type SortOrder = 'asc' | 'desc';
+
+export interface MarketSort {
+  sortBy: MarketSortBy;
+  order: SortOrder;
+}
+
+export interface MarketsResponse {
+  markets: Market[];
+  totalCount: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  currentPage: number;
+  totalPages: number;
 }
 ```
 
-## **State Management Types**
-
-### **Context and Provider Types**
+### **Prediction & Transaction Types**
 ```typescript
-// ✅ DO: Use discriminated unions for reducer actions
-type MarketAction =
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_MARKETS'; payload: MarketsResponse }
-  | { type: 'SET_ERROR'; payload: string | null };
-
-// ✅ DO: Group related state into logical interfaces
-interface MarketBrowsingState {
-  markets: readonly Market[];    // Immutable array
-  totalCount: number;
-  currentPage: number;
-  isLoading: boolean;
-  error: string | null;         // Null, not undefined
+// User prediction
+export interface Prediction {
+  id: string;
+  userId: string;
+  marketId: string;
+  outcome: string;               // Selected outcome
+  stake: number;                 // Amount staked (will be bigint)
+  odds: number;                  // Odds at time of prediction
+  potentialPayout: number;       // Calculated payout (will be bigint)
+  
+  status: 'active' | 'won' | 'lost' | 'refunded';
+  payout?: number | null;        // Actual payout if won
+  
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-interface MarketCreationState {
+// Transaction record
+export interface Transaction {
+  id: string;
+  userId: string;
+  type: 'deposit' | 'withdrawal' | 'stake' | 'payout' | 'refund';
+  amount: number;                // Will be bigint for contracts
+  currency: string;              // 'WLD' | 'USDC' | 'ETH'
+  
+  // Blockchain data
+  txHash?: string | null;
+  blockNumber?: number | null;
+  gasUsed?: number | null;
+  
+  // Related objects
+  predictionId?: string | null;
+  marketId?: string | null;
+  
+  status: 'pending' | 'confirmed' | 'failed';
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### **Social Features Types**
+```typescript
+// User follow relationship
+export interface UserFollow {
+  id: string;
+  followerId: string;
+  followingId: string;
+  createdAt: Date;
+}
+
+// Challenge system
+export interface Challenge {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  marketId: string;
+  message?: string | null;
+  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  expiresAt: Date;
+  createdAt: Date;
+  respondedAt?: Date | null;
+}
+
+// User activity feed
+export interface UserActivity {
+  id: string;
+  userId: string;
+  type: 'prediction' | 'follow' | 'challenge' | 'streak' | 'achievement';
+  title: string;
+  details?: Record<string, any> | null; // JSON data
+  isPublic: boolean;
+  createdAt: Date;
+}
+```
+
+### **File Upload Types**
+```typescript
+// Uploaded image tracking
+export interface UploadedImage {
+  id: string;
+  fileName: string;
+  originalName: string;
+  fileSize: number;              // Size in bytes
+  fileType: string;              // MIME type
+  storagePath: string;           // Path in Supabase storage
+  publicUrl: string;             // Public access URL
+  uploadType: 'market-option' | 'market-header' | 'profile' | 'other';
+  
+  // Relations
+  uploadedBy: string;            // User ID
+  marketId?: string | null;      // If associated with market
+  
+  // Metadata
+  metadata?: Record<string, any> | null;
+  
+  // Status
+  isActive: boolean;
+  isDeleted: boolean;            // Soft delete
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// File upload request
+export interface UploadImageRequest {
+  file: File;
+  uploadType: 'market-option' | 'market-header' | 'profile' | 'other';
+  marketId?: string;
+}
+export interface UploadImageResponse {
+  id: string;
+  publicUrl: string;
+  storagePath: string;
+}
+```
+
+## **API Response Types**
+
+```typescript
+// Generic API response wrapper
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T | null;
+  error?: string | null;
+  message?: string | null;
+  metadata?: {
+    timestamp: Date;
+    requestId?: string | null;
+  } | null;
+}
+
+// Error response
+export interface ApiError {
+  success: false;
+  error: string;
+  message?: string;
+  code?: string;
+  details?: Record<string, any>;
+}
+
+// Pagination metadata
+export interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  limit: number;
+}
+```
+
+## **Form and UI State Types**
+
+```typescript
+// Market creation form state
+export interface MarketCreationState {
   step: number;
   totalSteps: number;
-  formData: Partial<CreateMarketRequest>; // Allow partial during form filling
+  formData: Partial<CreateMarketRequest>;
   isValid: boolean;
   errors: Record<string, string>;
 }
-```
 
-## **Smart Contract Preparation**
-
-### **Enum Mappings**
-```typescript
-// ✅ DO: Design enums to map directly to Solidity enums
-enum MarketStatus {
-  DRAFT = 'draft',               // uint8(0) in Solidity
-  ACTIVE = 'active',             // uint8(1) in Solidity
-  RESOLVED = 'resolved',         // uint8(2) in Solidity
-  CANCELLED = 'cancelled'        // uint8(3) in Solidity
+// Profile completion state
+export interface ProfileCompletionState {
+  step: number;
+  totalSteps: number;
+  formData: Partial<UpdateUserRequest>;
+  isValid: boolean;
+  errors: Record<string, string>;
 }
 
-enum MarketCategory {
-  SPORTS = 'sports',
-  CRYPTO = 'crypto',
-  ENTERTAINMENT = 'entertainment',
-  POLITICS = 'politics',
-  TECHNOLOGY = 'technology',
-  CUSTOM = 'custom'
-}
-```
-
-### **Event and Log Types**
-```typescript
-// ✅ DO: Prepare event types for smart contract events
-interface MarketCreatedEvent {
-  marketId: string;              // uint256 tokenId
-  creator: string;               // address
-  category: MarketCategory;      // uint8 enum
-  endTime: bigint;               // uint256 timestamp
-  blockNumber: bigint;           // For event indexing
-  transactionHash: string;       // For transaction tracking
+// Loading states
+export interface LoadingState {
+  isLoading: boolean;
+  error?: string | null;
+  lastUpdated?: Date | null;
 }
 
-interface StakePlacedEvent {
+// WebSocket message types
+export interface MarketUpdate {
+  type: 'market_update';
   marketId: string;
-  user: string;                  // address
-  optionIndex: number;           // uint8
-  amount: bigint;                // uint256 wei amount
-  timestamp: bigint;             // uint256 block timestamp
+  data: Partial<Market>;
 }
+
+export interface PredictionUpdate {
+  type: 'prediction_update';
+  predictionId: string;
+  data: Partial<Prediction>;
+}
+
+export type WebSocketMessage = MarketUpdate | PredictionUpdate;
 ```
 
-## **Validation and Error Handling**
+## **Database Query Types**
 
-### **Type Guards and Validation**
 ```typescript
-// ✅ DO: Create type guards for runtime validation
-function isValidMarket(obj: any): obj is Market {
-  return (
-    typeof obj.id === 'string' &&
-    typeof obj.title === 'string' &&
-    typeof obj.description === 'string' &&
-    Array.isArray(obj.options) &&
-    obj.options.length >= 2 &&
-    Object.values(MarketCategory).includes(obj.category)
-  );
+// Supabase query builders
+export interface UserQuery {
+  select?: (keyof User)[];
+  where?: Partial<User>;
+  orderBy?: { field: keyof User; ascending: boolean };
+  limit?: number;
+  offset?: number;
 }
 
-// ✅ DO: Use branded types for important IDs
-type MarketId = string & { readonly __brand: 'MarketId' };
-type UserId = string & { readonly __brand: 'UserId' };
-type ContractAddress = string & { readonly __brand: 'ContractAddress' };
+export interface MarketQuery {
+  select?: (keyof Market)[];
+  where?: Partial<Market>;
+  filters?: MarketFilters;
+  sort?: MarketSort;
+  limit?: number;
+  offset?: number;
+  includeCreator?: boolean;
+  includeOptions?: boolean;
+}
 
-// ✅ DO: Validate and brand IDs at boundaries
-function validateMarketId(id: string): MarketId {
-  if (!/^market_\d+$/.test(id)) {
-    throw new Error(`Invalid market ID format: ${id}`);
-  }
-  return id as MarketId;
+// Database join types
+export interface MarketWithCreator extends Market {
+  creator: UserProfile;
+}
+
+export interface PredictionWithMarket extends Prediction {
+  market: Market;
+  user: UserProfile;
 }
 ```
 
-## **Migration and Contract Integration**
+## **Validation and Brand Types**
 
-### **Contract Interface Preparation**
 ```typescript
-// ✅ DO: Design types to match expected contract interfaces
-interface KnovaMarketContract {
-  createMarket(
-    title: string,           // Will be IPFS hash
-    description: string,     // Will be IPFS hash
-    category: number,        // MarketCategory enum value
-    options: string[],       // Array of option titles
-    endTime: bigint,         // Unix timestamp
-    minStake: bigint,        // Minimum stake in wei
-    maxStake: bigint         // Maximum stake in wei
-  ): Promise<{ marketId: bigint }>;
+// Branded types for IDs
+export type UserId = string & { readonly __brand: 'UserId' };
+export type MarketId = string & { readonly __brand: 'MarketId' };
+export type PredictionId = string & { readonly __brand: 'PredictionId' };
+export type WalletAddress = string & { readonly __brand: 'WalletAddress' };
 
-  placeStake(
-    marketId: bigint,
-    optionIndex: number,
-    amount: bigint
-  ): Promise<{ success: boolean }>;
+// Type guards
+export function isUserId(value: string): value is UserId {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
 }
 
-// ✅ DO: Prepare transformation utilities
-class TypeTransformers {
-  static marketToContract(market: CreateMarketRequest): ContractMarketParams {
-    return {
-      title: market.title,
-      description: market.description,
-      category: Object.values(MarketCategory).indexOf(market.category),
-      options: market.options.map(opt => opt.title),
-      endTime: BigInt(Math.floor(market.endDate.getTime() / 1000)),
-      minStake: BigInt(market.minStake || 1),
-      maxStake: BigInt(market.maxStake || 1000)
-    };
-  }
+export function isMarketId(value: string): value is MarketId {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
+}
 
-  static contractToMarket(contractData: ContractMarketData): Market {
-    // Transform contract response back to Market interface
-  }
+export function isWalletAddress(value: string): value is WalletAddress {
+  return /^0x[a-fA-F0-9]{40}$/.test(value);
+}
+
+// Validation helpers
+export function validateMarketCategory(category: string): category is MarketCategory {
+  return ['sports', 'crypto', 'music', 'user_generated'].includes(category);
+}
+
+export function validateMarketStatus(status: string): status is MarketStatus {
+  return ['draft', 'pending_approval', 'active', 'paused', 'closed', 'resolved', 'cancelled'].includes(status);
 }
 ```
 
-## **File Organization**
+## **Migration and Transformation Types**
 
-- **Core types**: [market.ts](mdc:src/types/market.ts) - All market-related types
-- **User types**: `src/types/user.ts` - User and authentication types
-- **Contract types**: `src/types/contracts.ts` - Smart contract interface types
-- **API types**: `src/types/api.ts` - Request/response types
-- **State types**: Include in provider files alongside implementation
+```typescript
+// Prisma to Supabase transformation
+export interface PrismaToSupabaseMap {
+  user: {
+    prismaField: keyof any; // Will be removed
+    supabaseField: keyof User;
+    transform?: (value: any) => any;
+  }[];
+  market: {
+    prismaField: keyof any; // Will be removed
+    supabaseField: keyof Market;
+    transform?: (value: any) => any;
+  }[];
+}
 
-## **Before Adding New Types**
+// Data migration tracking
+export interface MigrationStatus {
+  entity: 'users' | 'markets' | 'predictions' | 'transactions' | 'user_follows' | 'challenges' | 'user_activities' | 'uploaded_images';
+  totalRecords: number;
+  migratedRecords: number;
+  failedRecords: number;
+  isComplete: boolean;
+  startedAt: Date;
+  completedAt?: Date | null;
+  errors: string[];
+}
+```
 
-1. **Check existing types**: Review [market.ts](mdc:src/types/market.ts) and related files
-2. **Consider smart contract mapping**: How will this type translate to Solidity?
-3. **Follow naming conventions**: Use established patterns from existing types
-4. **Add validation**: Include type guards for runtime safety
-5. **Document purpose**: Add JSDoc comments explaining the type's role and smart contract mapping
+## **Export Organization**
 
-## **Common Anti-Patterns to Avoid**
+```typescript
+// Re-export all types from index
+export * from './user.types';
+export * from './market.types';
+export * from './prediction.types';
+export * from './api.types';
+export * from './ui.types';
+export * from './validation.types';
+```
 
-- **Inconsistent naming**: Don't mix camelCase/snake_case or use different names for the same concept
-- **Floating point for money**: Always use `bigint` for token amounts and stakes
-- **Undefined for optional**: Use `null` for explicitly absent data, reserve `undefined` for uninitialized
-- **Duplicate interfaces**: Reuse existing types rather than creating similar ones
-- **No smart contract consideration**: Every type should have a clear path to on-chain representation
+## **Usage Guidelines**
 
-Follow these conventions to ensure type safety, consistency, and smooth smart contract integration when ready to deploy Knova on-chain.
+- **Always import from main types file**: `import { User, Market } from '@/types'`
+- **Use branded types for IDs**: Cast to branded types at API boundaries
+- **Validate inputs**: Use type guards for runtime validation
+- **Handle nulls explicitly**: Database fields that can be null should use `| null`
+- **Prepare for smart contracts**: Design numeric fields to work with `bigint`
+- **Keep types synchronized**: Update types when database schema changes
+
+## **File Structure**
+```
+src/types/
+├── index.ts           // Main export file
+├── user.types.ts      // User-related types
+├── market.types.ts    // Market and prediction types
+├── api.types.ts       // API request/response types
+├── ui.types.ts        // Component and state types
+└── validation.types.ts // Type guards and validation
+```

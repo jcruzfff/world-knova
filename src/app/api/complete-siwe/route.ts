@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { MiniAppWalletAuthSuccessPayload, verifySiweMessage } from '@worldcoin/minikit-js'
-import { prisma } from '@/lib/prisma'
+import { supabaseService } from '@/lib/supabase-client'
 
 interface IRequestPayload {
   payload: MiniAppWalletAuthSuccessPayload
@@ -87,35 +87,59 @@ export async function POST(req: NextRequest) {
       })
     }
     
-    // Find or create user in database
-    let user = await prisma.user.findUnique({
-      where: { walletAddress },
-    })
+    // Find or create user in database using Supabase
+    let { data: user, error } = await supabaseService.getUserByWalletAddress(walletAddress)
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+      console.error('❌ Complete SIWE: Database error:', error)
+      return NextResponse.json({
+        status: 'error',
+        isValid: false,
+        message: 'Database error',
+      })
+    }
     
     if (!user) {
       console.log('👤 Complete SIWE: Creating new user...')
-      user = await prisma.user.create({
-        data: {
-          walletAddress,
-          username: userInfo.username,
-          profilePictureUrl: userInfo.profilePictureUrl,
-          name: userInfo.username,
-          worldIdVerified: false,
-          isProfileComplete: false,
-          isEligible: false,
-        },
+      const { data: newUser, error: createError } = await supabaseService.createUser({
+        wallet_address: walletAddress,
+        username: userInfo.username,
+        profile_picture_url: userInfo.profilePictureUrl,
+        name: userInfo.username,
+        world_id_verified: false,
+        is_profile_complete: false,
+        is_eligible: false,
       })
+      
+      if (createError) {
+        console.error('❌ Complete SIWE: User creation error:', createError)
+        return NextResponse.json({
+          status: 'error',
+          isValid: false,
+          message: 'Failed to create user',
+        })
+      }
+      
+      user = newUser!
       console.log('✅ Complete SIWE: New user created:', user.id)
     } else {
       console.log('👤 Complete SIWE: Updating existing user...')
-      user = await prisma.user.update({
-        where: { walletAddress },
-        data: {
-          username: userInfo.username,
-          profilePictureUrl: userInfo.profilePictureUrl,
-          name: userInfo.username,
-        },
+      const { data: updatedUser, error: updateError } = await supabaseService.updateUser(user.id, {
+        username: userInfo.username,
+        profile_picture_url: userInfo.profilePictureUrl,
+        name: userInfo.username,
       })
+      
+      if (updateError) {
+        console.error('❌ Complete SIWE: User update error:', updateError)
+        return NextResponse.json({
+          status: 'error',
+          isValid: false,
+          message: 'Failed to update user',
+        })
+      }
+      
+      user = updatedUser!
       console.log('✅ Complete SIWE: User updated:', user.id)
     }
     

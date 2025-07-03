@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { supabaseService } from '@/lib/supabase-client';
 
 export interface StreakUpdate {
   currentStreak: number;
@@ -16,23 +16,15 @@ export async function updateUserStreak(userId: string): Promise<StreakUpdate> {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      currentStreak: true,
-      longestStreak: true,
-      lastActiveDate: true,
-      totalVisitDays: true,
-    },
-  });
+  const { data: user, error } = await supabaseService.getUserById(userId);
 
-  if (!user) {
+  if (error || !user) {
     throw new Error('User not found');
   }
 
   // Check if user was active today already
   const lastActiveDate = user.lastActiveDate 
-    ? new Date(user.lastActiveDate.getFullYear(), user.lastActiveDate.getMonth(), user.lastActiveDate.getDate())
+    ? new Date(new Date(user.lastActiveDate).getFullYear(), new Date(user.lastActiveDate).getMonth(), new Date(user.lastActiveDate).getDate())
     : null;
 
   // If already active today, return current stats
@@ -76,21 +68,23 @@ export async function updateUserStreak(userId: string): Promise<StreakUpdate> {
 
   const totalVisitDays = user.totalVisitDays + 1;
 
-  // Update user in database
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      currentStreak,
-      longestStreak,
-      lastActiveDate: now,
-      totalVisitDays,
-    },
+  // Update user in database using Supabase
+  const { error: updateError } = await supabaseService.updateUser(userId, {
+    current_streak: currentStreak,
+    longest_streak: longestStreak,
+    last_active_date: now.toISOString(),
+    total_visit_days: totalVisitDays,
   });
 
-  // Log streak activity
-  await prisma.userActivity.create({
-    data: {
-      userId,
+  if (updateError) {
+    throw new Error('Failed to update user streak');
+  }
+
+  // Log streak activity using Supabase
+  await supabaseService['client']
+    .from('user_activities')
+    .insert([{
+      user_id: userId,
       type: 'streak',
       title: streakBroken 
         ? `Streak reset - started a new streak! Day ${currentStreak}`
@@ -104,9 +98,8 @@ export async function updateUserStreak(userId: string): Promise<StreakUpdate> {
         streakBroken,
         isNewRecord: currentStreak === longestStreak && currentStreak > 1,
       },
-      isPublic: true, // Streak achievements can be public
-    },
-  });
+      is_public: true, // Streak achievements can be public
+    }]);
 
   // Log streak milestones
   if (currentStreak > 1 && (currentStreak % 7 === 0 || currentStreak % 30 === 0 || currentStreak === longestStreak)) {
@@ -120,9 +113,10 @@ export async function updateUserStreak(userId: string): Promise<StreakUpdate> {
     }
 
     if (achievementTitle) {
-      await prisma.userActivity.create({
-        data: {
-          userId,
+      await supabaseService['client']
+        .from('user_activities')
+        .insert([{
+          user_id: userId,
           type: 'achievement',
           title: achievementTitle,
           details: {
@@ -130,9 +124,8 @@ export async function updateUserStreak(userId: string): Promise<StreakUpdate> {
             streak: currentStreak,
             milestone: currentStreak % 30 === 0 ? 'monthly' : currentStreak % 7 === 0 ? 'weekly' : 'personal_record',
           },
-          isPublic: true,
-        },
-      });
+          is_public: true,
+        }]);
     }
   }
 
@@ -149,24 +142,16 @@ export async function updateUserStreak(userId: string): Promise<StreakUpdate> {
  * Get user streak statistics
  */
 export async function getUserStreakStats(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      currentStreak: true,
-      longestStreak: true,
-      lastActiveDate: true,
-      totalVisitDays: true,
-    },
-  });
+  const { data: user, error } = await supabaseService.getUserById(userId);
 
-  if (!user) {
+  if (error || !user) {
     return null;
   }
 
   const today = new Date();
   const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const lastActiveDate = user.lastActiveDate 
-    ? new Date(user.lastActiveDate.getFullYear(), user.lastActiveDate.getMonth(), user.lastActiveDate.getDate())
+    ? new Date(new Date(user.lastActiveDate).getFullYear(), new Date(user.lastActiveDate).getMonth(), new Date(user.lastActiveDate).getDate())
     : null;
 
   const isActiveToday = lastActiveDate && lastActiveDate.getTime() === todayDate.getTime();

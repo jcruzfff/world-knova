@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { prisma } from '@/lib/prisma';
+import { supabaseService } from '@/lib/supabase-client';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Countries where prediction markets are generally restricted
@@ -75,35 +75,41 @@ export async function POST(req: NextRequest) {
                      'unknown';
     const userAgent = req.headers.get('user-agent') || 'unknown';
 
-    // Update user profile
-    const updatedUser = await prisma.user.update({
-      where: { id: sessionUser.id },
-      data: {
-        age,
-        countryCode: countryCode.toUpperCase(),
-        region,
-        isEligible,
-        isProfileComplete: true,
-        termsAcceptedAt: termsAccepted ? new Date() : undefined,
-        privacyAcceptedAt: privacyAccepted ? new Date() : undefined,
-        // Initialize default preferences for new users
-        preferredCurrency: 'WLD',
-        favoriteCategories: [],
-        profileVisibility: 'public',
-        // Initialize streak tracking
-        currentStreak: 1,
-        longestStreak: 1,
-        lastActiveDate: new Date(),
-        totalVisitDays: 1,
-      },
+    // Update user profile using Supabase
+    const { data: updatedUser, error: updateError } = await supabaseService.updateUser(sessionUser.id, {
+      age,
+      country_code: countryCode.toUpperCase(),
+      region,
+      is_eligible: isEligible,
+      is_profile_complete: true,
+      terms_accepted_at: termsAccepted ? new Date().toISOString() : undefined,
+      privacy_accepted_at: privacyAccepted ? new Date().toISOString() : undefined,
+      // Initialize default preferences for new users
+      preferred_currency: 'WLD',
+      favorite_categories: [],
+      profile_visibility: 'public',
+      // Initialize streak tracking
+      current_streak: 1,
+      longest_streak: 1,
+      last_active_date: new Date().toISOString(),
+      total_visit_days: 1,
     });
 
-    // Log compliance action
-    await prisma.complianceLog.create({
-      data: {
-        userId: sessionUser.id,
+    if (updateError) {
+      console.error('User update error:', updateError);
+      return NextResponse.json(
+        { success: false, message: 'Failed to update profile' },
+        { status: 500 }
+      );
+    }
+
+    // Log compliance action using direct Supabase client
+    const { error: complianceError } = await supabaseService['client']
+      .from('compliance_logs')
+      .insert([{
+        user_id: sessionUser.id,
         action: 'profile_completion',
-        result: isEligible ? 'approved' : 'restricted',
+        result: isEligible ? 'passed' : 'failed',
         details: {
           age,
           countryCode: countryCode.toUpperCase(),
@@ -112,15 +118,20 @@ export async function POST(req: NextRequest) {
           privacyAccepted,
           eligibilityReason: isEligible ? 'country_allowed' : 'country_restricted',
         },
-        ipAddress: clientIP,
-        userAgent,
-      },
-    });
+        ip_address: clientIP,
+        user_agent: userAgent,
+      }]);
 
-    // Create initial activity entry
-    await prisma.userActivity.create({
-      data: {
-        userId: sessionUser.id,
+    if (complianceError) {
+      console.error('Compliance log error:', complianceError);
+      // Don't fail the request, just log the error
+    }
+
+    // Create initial activity entry using direct Supabase client
+    const { error: activityError } = await supabaseService['client']
+      .from('user_activities')
+      .insert([{
+        user_id: sessionUser.id,
         type: 'profile_completion',
         title: `Welcome to Knova! Profile completed successfully.`,
         details: {
@@ -128,9 +139,13 @@ export async function POST(req: NextRequest) {
           countryCode: countryCode.toUpperCase(),
           region,
         },
-        isPublic: false, // Keep profile completion private
-      },
-    });
+        is_public: false, // Keep profile completion private
+      }]);
+
+    if (activityError) {
+      console.error('User activity error:', activityError);
+      // Don't fail the request, just log the error
+    }
 
     return NextResponse.json({
       success: true,
@@ -138,13 +153,13 @@ export async function POST(req: NextRequest) {
         ? 'Profile completed successfully! You can now participate in prediction markets.'
         : 'Profile completed, but prediction markets are not available in your region due to local regulations.',
       user: {
-        id: updatedUser.id,
-        isEligible: updatedUser.isEligible,
-        isProfileComplete: updatedUser.isProfileComplete,
-        currentStreak: updatedUser.currentStreak,
-        age: updatedUser.age,
-        countryCode: updatedUser.countryCode,
-        region: updatedUser.region,
+        id: updatedUser!.id,
+        isEligible: updatedUser!.isEligible,
+        isProfileComplete: updatedUser!.isProfileComplete,
+        currentStreak: updatedUser!.currentStreak,
+        age: updatedUser!.age,
+        countryCode: updatedUser!.countryCode,
+        region: updatedUser!.region,
       },
     });
 

@@ -71,7 +71,7 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
   };
 
   const handleShare = async () => {
-    const displaySubtitle = currentMarket.subtitle || currentMarket.description?.substring(0, 100) + '...' || 'No description';
+    const displaySubtitle = currentMarket.description?.substring(0, 100) + '...' || 'No description';
     const shareData = {
       title: currentMarket.title,
       text: `Check out this prediction market on Knova: ${displaySubtitle}`,
@@ -175,7 +175,7 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
 
             {/* Subtitle */}
             <p className="text-gray-600 text-lg mb-6">
-              {currentMarket.subtitle || currentMarket.description?.substring(0, 200) + '...' || 'No description'}
+              {currentMarket.description?.substring(0, 200) + '...' || 'No description'}
             </p>
 
             {/* Stats Row */}
@@ -194,7 +194,7 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-xl">
                 <div className="text-2xl font-bold text-gray-900">
-                  {currentMarket.creator ? currentMarket.creator.substring(0, 8) + '...' : 'Anonymous'}
+                  {currentMarket.creator ? (currentMarket.creator.displayName || currentMarket.creator.username || 'Creator') : 'Anonymous'}
                 </div>
                 <div className="text-sm text-gray-500">Creator</div>
               </div>
@@ -210,7 +210,7 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Market Description</h2>
               <p className="text-gray-700 leading-relaxed">
-                {market.description || (market.subtitle || 'No description available')}
+                {market.description || 'No description available'}
               </p>
               
               {/* Tags */}
@@ -235,17 +235,12 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Rules & Resolution</h2>
               
-              {market.rules && market.rules.length > 0 && (
+              {market.resolutionCriteria && (
                 <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Market Rules</h3>
-                  <ul className="space-y-2">
-                    {market.rules.map((rule, index) => (
-                      <li key={index} className="flex items-start gap-2 text-gray-700">
-                        <span className="text-blue-500 mt-1.5 flex-shrink-0">•</span>
-                        <span>{rule}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Resolution Criteria</h3>
+                  <div className="text-gray-700 leading-relaxed">
+                    {market.resolutionCriteria}
+                  </div>
                 </div>
               )}
 
@@ -253,7 +248,7 @@ export const MarketDetail = ({ market }: MarketDetailProps) => {
                 <div className="flex justify-between">
                   <span className="text-gray-500">Resolution Source:</span>
                   <span className="text-gray-900 font-medium">
-                    {market.resolutionSource || 'Manual verification'}
+                    {market.oracleSource || 'Manual verification'}
                   </span>
                 </div>
                 <div className="flex justify-between">

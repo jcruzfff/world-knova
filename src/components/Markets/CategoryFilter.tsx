@@ -3,32 +3,36 @@
 import { useState } from 'react';
 import { MarketCategoryFilter } from '@/types/market';
 
+// Local type for displayed categories (excludes user_generated)
+type DisplayedCategoryFilter = 'all' | 'sports' | 'crypto' | 'music';
+
 interface CategoryFilterProps {
   selectedCategory?: MarketCategoryFilter;
   onCategoryChange?: (category: MarketCategoryFilter) => void;
 }
 
 
-const categoryLabels = {
+const categoryLabels: Record<DisplayedCategoryFilter, string> = {
   all: 'All',
   sports: 'Sports',
   music: 'Music',
-  crypto: 'Crypto',
-  user_generated: 'User'
+  crypto: 'Crypto'
 };
 
 export const CategoryFilter = ({ 
   selectedCategory = 'all', 
   onCategoryChange 
 }: CategoryFilterProps) => {
-  const [activeCategory, setActiveCategory] = useState<MarketCategoryFilter>(selectedCategory);
+  // Cast to displayed category for internal state
+  const initialCategory = selectedCategory === 'user_generated' ? 'all' : selectedCategory as DisplayedCategoryFilter;
+  const [activeCategory, setActiveCategory] = useState<DisplayedCategoryFilter>(initialCategory);
 
-  const handleCategorySelect = (category: MarketCategoryFilter) => {
+  const handleCategorySelect = (category: DisplayedCategoryFilter) => {
     setActiveCategory(category);
     onCategoryChange?.(category);
   };
 
-  const categories: MarketCategoryFilter[] = ['all', 'sports', 'crypto', 'music'];
+  const categories: DisplayedCategoryFilter[] = ['all', 'sports', 'crypto', 'music'];
 
   return (
     <div data-layer="Tab" className="Tab h-[42px] p-1 bg-[#0f111a] rounded-[80px] outline outline-offset-[-1px] outline-[#262833] inline-flex justify-start items-start gap-px">

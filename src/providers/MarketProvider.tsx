@@ -87,7 +87,9 @@ const initialState: MarketState = {
     totalSteps: 4,
     formData: {},
     isValid: false,
-    errors: {}
+    errors: {},
+    isSubmitting: false,
+    uploadedImages: []
   }
 };
 

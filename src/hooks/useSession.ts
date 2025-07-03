@@ -17,25 +17,71 @@ interface SessionUser {
   privacyAcceptedAt?: Date | null;
 }
 
+interface SessionState {
+  user: SessionUser | null;
+  loading: boolean;
+  error?: string | null;
+  sessionCleared?: boolean; // New flag to indicate session was cleared
+}
+
 export function useSession() {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<SessionState>({
+    user: null,
+    loading: true,
+    error: null,
+    sessionCleared: false
+  });
+
+  const clearSession = useCallback(() => {
+    setState({
+      user: null,
+      loading: false,
+      error: null,
+      sessionCleared: true
+    });
+  }, []);
 
   const checkSession = useCallback(() => {
-    setLoading(true);
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
     fetch('/api/profile')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setUser(data.user);
+          setState({
+            user: data.user,
+            loading: false,
+            error: null,
+            sessionCleared: false
+          });
         } else {
-          setUser(null);
+          // Check if the server cleared the session
+          if (data.action === 'session_cleared') {
+            console.log('🧹 Server cleared invalid session:', data.message);
+            setState({
+              user: null,
+              loading: false,
+              error: data.message || 'Session was cleared',
+              sessionCleared: true
+            });
+          } else {
+            setState({
+              user: null,
+              loading: false,
+              error: data.message || 'Authentication failed',
+              sessionCleared: false
+            });
+          }
         }
-        setLoading(false);
       })
-      .catch(() => {
-        setUser(null);
-        setLoading(false);
+      .catch(error => {
+        console.error('Session check error:', error);
+        setState({
+          user: null,
+          loading: false,
+          error: 'Network error',
+          sessionCleared: false
+        });
       });
   }, []);
 
@@ -43,5 +89,12 @@ export function useSession() {
     checkSession();
   }, [checkSession]);
 
-  return { user, loading, refreshSession: checkSession };
+  return { 
+    user: state.user, 
+    loading: state.loading, 
+    error: state.error,
+    sessionCleared: state.sessionCleared,
+    refreshSession: checkSession,
+    clearSession
+  };
 } 
