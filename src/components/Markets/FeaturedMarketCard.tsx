@@ -7,6 +7,10 @@ export const FeaturedMarketCard = ({ market, onClick }: MarketCardProps) => {
   // Format the market value
   const displayVolume = `$${market.totalPool.toLocaleString()} WLD`;
   
+  // Get the first option's image URL
+  const firstOptionImage = market.options.find(option => option.imageUrl)?.imageUrl;
+  const displayImage = firstOptionImage || market.imageUrl;
+  
   // Truncate question if longer than 12 words
   const truncateQuestion = (question: string, maxWords: number = 12): string => {
     const words = question.split(' ');
@@ -38,9 +42,9 @@ export const FeaturedMarketCard = ({ market, onClick }: MarketCardProps) => {
         data-layer="Market Image" 
         className="MarketImage w-[356px] h-[156px] left-0 top-0 absolute bg-[#3e4f6c]"
       >
-        {market.imageUrl ? (
+        {displayImage ? (
           <Image 
-            src={market.imageUrl} 
+            src={displayImage} 
             alt={market.title}
             fill
             className="object-cover"

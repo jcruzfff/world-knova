@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     // Find or create user in database using Supabase
     let { data: user, error } = await supabaseService.getUserByWalletAddress(walletAddress)
     
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+    if (error && typeof error === 'object' && 'code' in error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
       console.error('❌ Complete SIWE: Database error:', error)
       return NextResponse.json({
         status: 'error',

@@ -30,6 +30,10 @@ export const MarketCard = ({ market, onClick }: MarketCardProps) => {
   const displayVolume = `$${market.totalPool.toLocaleString()} WRL`;
   const categoryInfo = categoryConfig[market.category] || categoryConfig.sports;
   
+  // Get the first option's image URL
+  const firstOptionImage = market.options.find(option => option.imageUrl)?.imageUrl;
+  const displayImage = firstOptionImage || market.imageUrl;
+  
   // Truncate question if longer than 12 words
   const truncateQuestion = (question: string, maxWords: number = 12): string => {
     const words = question.split(' ');
@@ -50,18 +54,18 @@ export const MarketCard = ({ market, onClick }: MarketCardProps) => {
       {/* Market Image - Fixed position hanging over right side, behind content */}
       <div 
         data-layer="Market Image" 
-        className="MarketImage w-[155px] h-[155px] left-[230px] top-[13.82px] absolute origin-top-left rotate-[-9.22deg] bg-[#343e4f] rounded-lg opacity-40 z-0"
+        className="MarketImage w-[155px] h-[155px] left-[230px] top-[13.82px] absolute origin-top-left rotate-[-9.22deg] bg-[#343e4f] rounded-lg opacity-80 z-0"
       >
-        {market.imageUrl && (
+        {displayImage && (
           <Image 
-            src={market.imageUrl} 
+            src={displayImage} 
             alt={market.title}
             fill
             className="object-cover rounded-lg"
           />
         )}
         {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/60 rounded-lg"></div>
+        <div className="absolute inset-0 bg-black/40 rounded-lg"></div>
       </div>
       
       {/* Amount Value - Fixed position on right side, auto-width */}

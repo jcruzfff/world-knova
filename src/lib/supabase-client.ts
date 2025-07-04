@@ -1,44 +1,24 @@
 // Enhanced Supabase client for Knova
 // Replaces Prisma with typed database operations
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { Database, UserRow, MarketRow, PredictionRow, TransactionRow } from '@/types/database.types'
-import { User, Market, Prediction, Transaction } from '@/types'
+import { SupabaseClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { getSupabaseClient, getSupabaseAdminClient } from './supabase';
+import { Database, UserRow, MarketRow, PredictionRow, TransactionRow } from '@/types/database.types';
+import type { 
+  MarketCategory, 
+  MarketOption, 
+  User, 
+  Market, 
+  Prediction, 
+  Transaction 
+} from '@/types';
 
-// Supabase configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY! // Service role for admin operations
+// Get typed client instances
+const supabase = getSupabaseClient() as SupabaseClient<Database>;
+const supabaseAdmin = getSupabaseAdminClient() as SupabaseClient<Database>;
 
-// Create the regular Supabase client with proper typing
-export const supabase: SupabaseClient<Database> = createClient<Database>(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10
-      }
-    }
-  }
-)
-
-// Create admin client with service role key (bypasses RLS)
-const supabaseAdmin: SupabaseClient<Database> = createClient<Database>(
-  supabaseUrl,
-  supabaseServiceKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+// Export admin client function for API routes
+export { getSupabaseAdminClient };
 
 // Enhanced client with typed operations
 export class SupabaseService {
@@ -51,7 +31,7 @@ export class SupabaseService {
   }
 
   // User operations (using admin client for creation to bypass RLS)
-  async createUser(userData: Partial<UserRow>): Promise<{ data: User | null; error: any }> {
+  async createUser(userData: Partial<UserRow>): Promise<{ data: User | null; error: unknown }> {
     const { data, error } = await this.adminClient // Use admin client for user creation
       .from('users')
       .insert([{
@@ -90,7 +70,7 @@ export class SupabaseService {
     }
   }
 
-  async getUserByWalletAddress(walletAddress: string): Promise<{ data: User | null; error: any }> {
+  async getUserByWalletAddress(walletAddress: string): Promise<{ data: User | null; error: unknown }> {
     const { data, error } = await this.adminClient // Use admin client for reliable user lookup
       .from('users')
       .select('*')
@@ -103,7 +83,7 @@ export class SupabaseService {
     }
   }
 
-  async getUserById(id: string): Promise<{ data: User | null; error: any }> {
+  async getUserById(id: string): Promise<{ data: User | null; error: unknown }> {
     const { data, error } = await this.adminClient // Use admin client for reliable user lookup
       .from('users')
       .select('*')
@@ -116,7 +96,7 @@ export class SupabaseService {
     }
   }
 
-  async updateUser(id: string, updates: Partial<UserRow>): Promise<{ data: User | null; error: any }> {
+  async updateUser(id: string, updates: Partial<UserRow>): Promise<{ data: User | null; error: unknown }> {
     const { data, error } = await this.client // Regular client for user updates (user owns their data)
       .from('users')
       .update({
@@ -134,8 +114,8 @@ export class SupabaseService {
   }
 
   // Market operations
-  async createMarket(marketData: Partial<MarketRow>): Promise<{ data: Market | null; error: any }> {
-    const { data, error } = await this.client
+  async createMarket(marketData: Partial<MarketRow>): Promise<{ data: Market | null; error: unknown }> {
+    const { data, error } = await this.adminClient // Use admin client to bypass RLS
       .from('markets')
       .insert([{
         title: marketData.title!,
@@ -173,7 +153,7 @@ export class SupabaseService {
     status?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ data: Market[]; error: any; count: number | null }> {
+  }): Promise<{ data: Market[]; error: unknown; count: number | null }> {
     let query = this.client
       .from('markets')
       .select('*, users!markets_created_by_fkey(id, username, display_name, profile_picture_url)', { count: 'exact' })
@@ -205,7 +185,7 @@ export class SupabaseService {
     }
   }
 
-  async getMarketById(id: string): Promise<{ data: Market | null; error: any }> {
+  async getMarketById(id: string): Promise<{ data: Market | null; error: unknown }> {
     const { data, error } = await this.client
       .from('markets')
       .select('*, users!markets_created_by_fkey(id, username, display_name, profile_picture_url)')
@@ -219,7 +199,7 @@ export class SupabaseService {
   }
 
   // Prediction operations
-  async createPrediction(predictionData: Partial<PredictionRow>): Promise<{ data: Prediction | null; error: any }> {
+  async createPrediction(predictionData: Partial<PredictionRow>): Promise<{ data: Prediction | null; error: unknown }> {
     const { data, error } = await this.client
       .from('predictions')
       .insert([{
@@ -240,7 +220,7 @@ export class SupabaseService {
     }
   }
 
-  async getUserPredictions(userId: string): Promise<{ data: Prediction[]; error: any }> {
+  async getUserPredictions(userId: string): Promise<{ data: Prediction[]; error: unknown }> {
     const { data, error } = await this.client
       .from('predictions')
       .select('*, markets(*), users(*)')
@@ -253,7 +233,7 @@ export class SupabaseService {
     }
   }
 
-  async getMarketPredictions(marketId: string): Promise<{ data: Prediction[]; error: any }> {
+  async getMarketPredictions(marketId: string): Promise<{ data: Prediction[]; error: unknown }> {
     const { data, error } = await this.client
       .from('predictions')
       .select('*, users(id, username, display_name, profile_picture_url)')
@@ -267,7 +247,7 @@ export class SupabaseService {
   }
 
   // Transaction operations
-  async createTransaction(transactionData: Partial<TransactionRow>): Promise<{ data: Transaction | null; error: any }> {
+  async createTransaction(transactionData: Partial<TransactionRow>): Promise<{ data: Transaction | null; error: unknown }> {
     const { data, error } = await this.client
       .from('transactions')
       .insert([{
@@ -291,8 +271,110 @@ export class SupabaseService {
     }
   }
 
+  // Image upload operations
+  async createUploadedImage(imageData: {
+    file_name: string;
+    original_name: string;
+    file_size: number;
+    file_type: string;
+    storage_path: string;
+    public_url: string;
+    upload_type: 'market-option' | 'market-header' | 'profile' | 'other';
+    uploaded_by: string;
+    market_id?: string | null;
+    metadata?: Record<string, unknown>;
+    is_active?: boolean;
+    is_deleted?: boolean;
+  }): Promise<{ data: Record<string, unknown> | null; error: unknown }> {
+    const { data, error } = await this.adminClient // Use admin client to bypass RLS
+      .from('uploaded_images')
+      .insert([{
+        file_name: imageData.file_name,
+        original_name: imageData.original_name,
+        file_size: imageData.file_size,
+        file_type: imageData.file_type,
+        storage_path: imageData.storage_path,
+        public_url: imageData.public_url,
+        upload_type: imageData.upload_type,
+        uploaded_by: imageData.uploaded_by,
+        market_id: imageData.market_id || null,
+        metadata: imageData.metadata || null,
+        is_active: imageData.is_active ?? true,
+        is_deleted: imageData.is_deleted ?? false,
+      }])
+      .select()
+      .single()
+
+    return { data, error }
+  }
+
+  async getUploadedImages(filters: {
+    uploaded_by?: string;
+    option_ids?: string[];
+    is_active?: boolean;
+    is_deleted?: boolean;
+  }): Promise<{ data: Record<string, unknown>[] | null; error: unknown }> {
+    let query = this.adminClient // Use admin client for consistent access
+      .from('uploaded_images')
+      .select('id, public_url, metadata, created_at')
+
+    if (filters.uploaded_by) {
+      query = query.eq('uploaded_by', filters.uploaded_by)
+    }
+
+    if (filters.is_active !== undefined) {
+      query = query.eq('is_active', filters.is_active)
+    }
+
+    if (filters.is_deleted !== undefined) {
+      query = query.eq('is_deleted', filters.is_deleted)
+    }
+
+    if (filters.option_ids && filters.option_ids.length > 0) {
+      // Query JSONB metadata field for optionId
+      const optionFilters = filters.option_ids.map(id => `metadata->>optionId.eq.${id}`).join(',')
+      query = query.or(optionFilters)
+    }
+
+    const { data, error } = await query
+
+    return { data, error }
+  }
+
+  async updateUploadedImagesWithMarketId(
+    userId: string, 
+    optionIds: string[], 
+    marketId: string
+  ): Promise<{ success: boolean; updatedCount: number; error?: unknown }> {
+    let updatedCount = 0;
+    let lastError = null;
+
+    for (const optionId of optionIds) {
+      const { error, count } = await this.adminClient // Use admin client to bypass RLS
+        .from('uploaded_images')
+        .update({ market_id: marketId })
+        .eq('uploaded_by', userId)
+        .eq('metadata->>optionId', optionId)
+        .eq('is_active', true)
+        .eq('is_deleted', false)
+
+      if (error) {
+        lastError = error;
+        console.error(`❌ Failed to update images for option ${optionId}:`, error);
+      } else {
+        updatedCount += count || 0;
+      }
+    }
+
+    return {
+      success: !lastError,
+      updatedCount,
+      error: lastError
+    }
+  }
+
   // Real-time subscriptions
-  subscribeToMarketUpdates(marketId: string, callback: (payload: any) => void) {
+  subscribeToMarketUpdates(marketId: string, callback: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void) {
     return this.client
       .channel(`market:${marketId}`)
       .on(
@@ -308,7 +390,7 @@ export class SupabaseService {
       .subscribe()
   }
 
-  subscribeToUserUpdates(userId: string, callback: (payload: any) => void) {
+  subscribeToUserUpdates(userId: string, callback: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void) {
     return this.client
       .channel(`user:${userId}`)
       .on(
@@ -324,123 +406,111 @@ export class SupabaseService {
       .subscribe()
   }
 
-  // Transform database rows to application types
-  private transformUserRow(row: UserRow): User {
+  // Transform database rows to app types
+  private transformUserRow(userRow: UserRow): User {
     return {
-      id: row.id,
-      email: row.email,
-      emailVerified: row.email_verified ? new Date(row.email_verified) : null,
-      image: row.image,
-      name: row.name,
-      walletAddress: row.wallet_address,
-      username: row.username,
-      displayName: row.display_name,
-      profilePictureUrl: row.profile_picture_url,
-      worldIdVerified: row.world_id_verified,
-      verificationLevel: row.verification_level,
-      worldIdNullifier: row.world_id_nullifier,
-      verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
-      isProfileComplete: row.is_profile_complete,
-      age: row.age,
-      countryCode: row.country_code,
-      region: row.region,
-      isEligible: row.is_eligible,
-      termsAcceptedAt: row.terms_accepted_at ? new Date(row.terms_accepted_at) : null,
-      privacyAcceptedAt: row.privacy_accepted_at ? new Date(row.privacy_accepted_at) : null,
-      currentStreak: row.current_streak,
-      longestStreak: row.longest_streak,
-      lastActiveDate: row.last_active_date ? new Date(row.last_active_date) : null,
-      totalVisitDays: row.total_visit_days,
-      preferredCurrency: row.preferred_currency,
-      darkMode: row.dark_mode,
-      favoriteCategories: row.favorite_categories as any[],
-      profileVisibility: row.profile_visibility,
-      showPredictionHistory: row.show_prediction_history,
-      showStreak: row.show_streak,
-      allowChallenges: row.allow_challenges,
-      notifyFollows: row.notify_follows,
-      notifyChallenges: row.notify_challenges,
-      notifyMarketUpdates: row.notify_market_updates,
-      notifyResults: row.notify_results,
-      notifyStreakReminders: row.notify_streak_reminders,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
+      id: userRow.id,
+      email: userRow.email,
+      emailVerified: userRow.email_verified ? new Date(userRow.email_verified) : null,
+      image: userRow.image,
+      name: userRow.name,
+      walletAddress: userRow.wallet_address,
+      username: userRow.username,
+      displayName: userRow.display_name,
+      profilePictureUrl: userRow.profile_picture_url,
+      worldIdVerified: userRow.world_id_verified,
+      verificationLevel: userRow.verification_level,
+      worldIdNullifier: userRow.world_id_nullifier,
+      verifiedAt: userRow.verified_at ? new Date(userRow.verified_at) : null,
+      isProfileComplete: userRow.is_profile_complete,
+      age: userRow.age,
+      countryCode: userRow.country_code,
+      region: userRow.region,
+      isEligible: userRow.is_eligible,
+      termsAcceptedAt: userRow.terms_accepted_at ? new Date(userRow.terms_accepted_at) : null,
+      privacyAcceptedAt: userRow.privacy_accepted_at ? new Date(userRow.privacy_accepted_at) : null,
+      currentStreak: userRow.current_streak,
+      longestStreak: userRow.longest_streak,
+      lastActiveDate: userRow.last_active_date ? new Date(userRow.last_active_date) : null,
+      totalVisitDays: userRow.total_visit_days,
+      preferredCurrency: userRow.preferred_currency,
+      darkMode: userRow.dark_mode,
+      favoriteCategories: userRow.favorite_categories as MarketCategory[],
+      profileVisibility: userRow.profile_visibility,
+      showPredictionHistory: userRow.show_prediction_history,
+      showStreak: userRow.show_streak,
+      allowChallenges: userRow.allow_challenges,
+      notifyFollows: userRow.notify_follows,
+      notifyChallenges: userRow.notify_challenges,
+      notifyMarketUpdates: userRow.notify_market_updates,
+      notifyResults: userRow.notify_results,
+      notifyStreakReminders: userRow.notify_streak_reminders,
+      createdAt: new Date(userRow.created_at),
+      updatedAt: new Date(userRow.updated_at)
     }
   }
 
-  private transformMarketRow(row: MarketRow & { users?: any }): Market {
+  private transformMarketRow(marketRow: MarketRow): Market {
     return {
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      category: row.category as any,
-      customCategory: row.custom_category,
-      outcomeType: row.outcome_type as any,
-      options: Array.isArray(row.options) ? row.options as any[] : [],
-      minStake: row.min_stake,
-      maxStake: row.max_stake,
-      totalPool: row.total_pool,
-      startTime: new Date(row.start_time),
-      endTime: new Date(row.end_time),
-      resolutionTime: row.resolution_time ? new Date(row.resolution_time) : null,
-      status: row.status as any,
-      resolvedOutcome: row.resolved_outcome,
-      resolutionCriteria: row.resolution_criteria,
-      createdBy: row.created_by,
-      creator: row.users ? {
-        id: row.users.id,
-        username: row.users.username,
-        displayName: row.users.display_name,
-        profilePictureUrl: row.users.profile_picture_url,
-        worldIdVerified: false, // Will be populated in joins
-        currentStreak: 0,
-        longestStreak: 0,
-        profileVisibility: 'public' as any,
-        showPredictionHistory: true,
-        showStreak: true,
-      } : null,
-      oracleSource: row.oracle_source,
-      oracleId: row.oracle_id,
-      imageUrl: row.image_url,
-      tags: row.tags,
-      participantCount: row.participant_count,
-      viewCount: row.view_count,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
+      id: marketRow.id,
+      title: marketRow.title,
+      description: marketRow.description,
+      category: marketRow.category,
+      customCategory: marketRow.custom_category,
+      outcomeType: marketRow.outcome_type,
+      options: (marketRow.options as unknown as MarketOption[]) || [],
+      minStake: marketRow.min_stake,
+      maxStake: marketRow.max_stake,
+      totalPool: marketRow.total_pool,
+      startTime: new Date(marketRow.start_time),
+      endTime: new Date(marketRow.end_time),
+      resolutionTime: marketRow.resolution_time ? new Date(marketRow.resolution_time) : null,
+      status: marketRow.status,
+      resolvedOutcome: marketRow.resolved_outcome,
+      resolutionCriteria: marketRow.resolution_criteria,
+      createdBy: marketRow.created_by,
+      oracleSource: marketRow.oracle_source,
+      oracleId: marketRow.oracle_id,
+      imageUrl: marketRow.image_url,
+      tags: marketRow.tags,
+      participantCount: marketRow.participant_count,
+      viewCount: marketRow.view_count,
+      createdAt: new Date(marketRow.created_at),
+      updatedAt: new Date(marketRow.updated_at)
     }
   }
 
-  private transformPredictionRow(row: PredictionRow): Prediction {
+  private transformPredictionRow(predictionRow: PredictionRow): Prediction {
     return {
-      id: row.id,
-      userId: row.user_id,
-      marketId: row.market_id,
-      outcome: row.outcome,
-      stake: row.stake,
-      odds: row.odds,
-      potentialPayout: row.potential_payout,
-      status: row.status as any,
-      payout: row.payout,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
+      id: predictionRow.id,
+      userId: predictionRow.user_id,
+      marketId: predictionRow.market_id,
+      outcome: predictionRow.outcome,
+      stake: predictionRow.stake,
+      odds: predictionRow.odds,
+      potentialPayout: predictionRow.potential_payout,
+      status: predictionRow.status,
+      payout: predictionRow.payout,
+      createdAt: new Date(predictionRow.created_at),
+      updatedAt: new Date(predictionRow.updated_at)
     }
   }
 
-  private transformTransactionRow(row: TransactionRow): Transaction {
+  private transformTransactionRow(transactionRow: TransactionRow): Transaction {
     return {
-      id: row.id,
-      userId: row.user_id,
-      type: row.type as any,
-      amount: row.amount,
-      currency: row.currency as any,
-      txHash: row.tx_hash,
-      blockNumber: row.block_number,
-      gasUsed: row.gas_used,
-      predictionId: row.prediction_id,
-      marketId: row.market_id,
-      status: row.status as any,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
+      id: transactionRow.id,
+      userId: transactionRow.user_id,
+      type: transactionRow.type,
+      amount: transactionRow.amount,
+      currency: transactionRow.currency,
+      txHash: transactionRow.tx_hash,
+      blockNumber: transactionRow.block_number,
+      gasUsed: transactionRow.gas_used,
+      predictionId: transactionRow.prediction_id,
+      marketId: transactionRow.market_id,
+      status: transactionRow.status,
+      createdAt: new Date(transactionRow.created_at),
+      updatedAt: new Date(transactionRow.updated_at)
     }
   }
 }

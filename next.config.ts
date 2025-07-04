@@ -2,9 +2,15 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   images: {
-    domains: [
-      'static.usernames.app-backend.toolsforhumanity.com',
-      'images.unsplash.com'
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'static.usernames.app-backend.toolsforhumanity.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      }
     ],
   },
   allowedDevOrigins: [
@@ -13,9 +19,9 @@ const nextConfig: NextConfig = {
   ],
   reactStrictMode: false,
   
-  // Remove complex webpack optimizations that might cause chunk loading issues
+  // Font optimization
   experimental: {
-    // optimizePackageImports removed - no longer using UI kit
+    optimizePackageImports: ['@worldcoin/minikit-react'],
   },
   
   // Simplify webpack config for more reliable chunk loading

@@ -147,7 +147,7 @@ export class MigrationManager {
         const { error } = await supabaseService.createUser(transformedUser)
 
         if (error) {
-          errors.push(`User ${user.id}: ${error.message}`)
+          errors.push(`User ${user.id}: ${error instanceof Error ? error.message : 'Database error'}`)
           failedRecords++
         } else {
           processedRecords++
@@ -198,7 +198,7 @@ export class MigrationManager {
         const { error } = await supabaseService.createMarket(transformedMarket)
 
         if (error) {
-          errors.push(`Market ${market.id}: ${error.message}`)
+          errors.push(`Market ${market.id}: ${error instanceof Error ? error.message : 'Database error'}`)
           failedRecords++
         } else {
           processedRecords++

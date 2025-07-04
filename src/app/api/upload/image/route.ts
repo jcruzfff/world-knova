@@ -19,14 +19,13 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get images for these option IDs from this user using Supabase
-    const { data: images, error } = await supabaseService['client']
-      .from('uploaded_images')
-      .select('id, public_url, metadata, created_at')
-      .eq('uploaded_by', userId)
-      .eq('is_active', true)
-      .eq('is_deleted', false)
-      .in('metadata->>optionId', optionIds);
+    // Get images for these option IDs from this user using SupabaseService
+    const { data: images, error } = await supabaseService.getUploadedImages({
+      uploaded_by: userId,
+      option_ids: optionIds,
+      is_active: true,
+      is_deleted: false
+    });
 
     if (error) {
       console.error('❌ Get images database error:', error);
@@ -120,37 +119,41 @@ export async function POST(request: NextRequest) {
       url: uploadResult.url
     });
 
-    // Store image record in database using Supabase
-    const { data: imageRecord, error } = await supabaseService['client']
-      .from('uploaded_images')
-      .insert([{
-        file_name: `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${file.type.split('/')[1]}`,
-        original_name: file.name,
-        file_size: file.size,
-        file_type: file.type,
-        storage_path: uploadResult.path,
-        public_url: uploadResult.url,
-        upload_type: 'market-option',
-        uploaded_by: user.id,
-        // Associate with market if provided (will be set when market is created)
-        market_id: marketId || null,
-        metadata: {
-          compression: 'auto',
-          originalSize: file.size,
-          optionId: optionId || null, // Store which option this image is for
-          uploadContext: 'market-creation'
-        },
-        is_active: true,
-        is_deleted: false
-      }])
-      .select()
-      .single();
+    // Store image record in database using SupabaseService
+    const { data: imageRecord, error } = await supabaseService.createUploadedImage({
+      file_name: `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${file.type.split('/')[1]}`,
+      original_name: file.name,
+      file_size: file.size,
+      file_type: file.type,
+      storage_path: uploadResult.path,
+      public_url: uploadResult.url,
+      upload_type: 'market-option',
+      uploaded_by: user.id,
+      // Associate with market if provided (will be set when market is created)
+      market_id: marketId || null,
+      metadata: {
+        compression: 'auto',
+        originalSize: file.size,
+        optionId: optionId || null, // Store which option this image is for
+        uploadContext: 'market-creation'
+      },
+      is_active: true,
+      is_deleted: false
+    });
 
     if (error) {
       console.error('💾 Database insert error:', error);
       return NextResponse.json({
         success: false,
         error: 'Failed to save image record'
+      }, { status: 500 });
+    }
+
+    if (!imageRecord) {
+      console.error('💾 Database insert error: No image record returned');
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to create image record'
       }, { status: 500 });
     }
 
@@ -189,38 +192,27 @@ export async function PATCH(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Update all images for these option IDs to associate with the market using Supabase
-    let updatedCount = 0;
-    for (const optionId of optionIds) {
-      const { error, count } = await supabaseService['client']
-        .from('uploaded_images')
-        .update({ market_id: marketId })
-        .eq('uploaded_by', userId)
-        .eq('metadata->>optionId', optionId)
-        .eq('is_active', true)
-        .eq('is_deleted', false);
+    // Update all images for these option IDs to associate with the market using SupabaseService
+    const { success, updatedCount, error } = await supabaseService.updateUploadedImagesWithMarketId(
+      userId,
+      optionIds,
+      marketId
+    );
 
-      if (error) {
-        console.error('❌ Update images error:', error);
-        return NextResponse.json({
-          success: false,
-          error: 'Failed to update images with market ID'
-        }, { status: 500 });
-      }
-
-      updatedCount += count || 0;
+    if (!success) {
+      console.error('❌ Batch update images error:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to update image records'
+      }, { status: 500 });
     }
 
-    console.log('🔗 Updated images with market ID:', {
-      marketId,
-      optionIds,
-      updatedCount: updatedCount
-    });
+    console.log(`💾 Updated ${updatedCount} image records with market ID: ${marketId}`);
 
     return NextResponse.json({
       success: true,
       data: {
-        updatedCount: updatedCount,
+        updatedCount,
         marketId
       }
     });
@@ -229,7 +221,7 @@ export async function PATCH(request: NextRequest) {
     console.error('❌ Update images API error:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to update images with market ID'
+      error: error instanceof Error ? error.message : 'Update failed'
     }, { status: 500 });
   }
 } 

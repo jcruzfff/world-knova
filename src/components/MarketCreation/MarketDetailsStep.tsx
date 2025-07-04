@@ -239,7 +239,7 @@ export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
           value={marketTitle}
           onChange={(e) => setMarketTitle(e.target.value)}
           placeholder="What do you want to predict?"
-          className="w-full px-4 py-3 bg-[#1D283B] border border-[#373a46] rounded-xl text-white placeholder-[#a0a0a0] focus:outline-none focus:border-[#e9ff74] transition-colors"
+          className="w-full px-4 py-3 bg-[#1D283B] border border-[#373a46] rounded-xl text-white placeholder-[#a0a0a0] focus:outline-none focus:border-[#e9ff74] transition-colors caret-white"
         />
       </div>
 
@@ -310,9 +310,13 @@ export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
                           onChange={(e) => handleFileSelect(option.id, e)}
                         />
                         <div className="text-white text-center">
-                          <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 002 2z" />
-                          </svg>
+                          <Image
+                            src="/image-icon.svg"
+                            alt="Replace image"
+                            width={24}
+                            height={24}
+                            className="mx-auto mb-1 filter brightness-0 invert"
+                          />
                           <span className="text-xs">Replace</span>
                         </div>
                       </label>
@@ -326,10 +330,15 @@ export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
                         className="hidden"
                         onChange={(e) => handleFileSelect(option.id, e)}
                       />
-                      <svg className="w-8 h-8 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 002 2z" />
-                      </svg>
+                      <Image
+                        src="/image-icon.svg"
+                        alt="Add image"
+                        width={32}
+                        height={32}
+                        className="filter brightness-0 invert opacity-60"
+                      />
                       <span className="text-sm text-[#a0a0a0]">+ Add an image</span>
+                      <span className="text-xs text-[#898989]">(optional)</span>
                     </label>
                   )}
                   
@@ -352,7 +361,7 @@ export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
                   value={option.title}
                   onChange={(e) => onOptionChange(option.id, e.target.value)}
                   placeholder={`Selection ${index + 1}`}
-                  className="w-full px-4 py-3 bg-[#1D283B] border border-[#373a46] rounded-xl text-white placeholder-[#a0a0a0] focus:outline-none focus:border-[#e9ff74] transition-colors"
+                  className="w-full px-4 py-3 bg-[#1D283B] border border-[#373a46] rounded-xl text-white placeholder-[#a0a0a0] focus:outline-none focus:border-[#e9ff74] transition-colors caret-white"
                 />
               </div>
             );

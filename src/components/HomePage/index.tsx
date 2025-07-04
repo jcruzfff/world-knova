@@ -264,7 +264,7 @@ export default function HomePage() {
         {/* All Markets Section */}
         <div className="px-[14px] mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">{getSectionTitle(activeCategory)}</h2>
+            <h2 className="text-xl font-medium text-white">{getSectionTitle(activeCategory)}</h2>
           </div>
 
           <div className="space-y-3">
@@ -282,18 +282,16 @@ export default function HomePage() {
                 />
               ))
             ) : state.markets.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="bg-[#1D283B] border border-[#373a46] rounded-xl p-8">
-                  <div className="w-12 h-12 bg-[#373a46] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-white font-semibold text-lg font-['Outfit'] mb-2">No Markets Yet</h3>
-                  <p className="text-[#a0a0a0] text-sm font-['Outfit']">
-                    Be the first to create a prediction market!
-                  </p>
+              <div className="bg-[#1D283B] border border-[#373a46] rounded-xl p-8 text-center">
+                <div className="w-12 h-12 bg-[#373a46] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-[#a0a0a0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
+                  </svg>
                 </div>
+                <h3 className="text-white font-semibold text-lg font-['Outfit'] mb-2">No Markets Yet</h3>
+                <p className="text-[#a0a0a0] text-sm font-['Outfit']">
+                  Be the first to create a prediction market!
+                </p>
               </div>
             ) : (
               <div className="text-center py-8">

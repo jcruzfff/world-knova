@@ -21,8 +21,8 @@ export async function POST() {
     cookieStore.delete('world-id-session');
     
     // Clear cookies with different path configurations
-    cookieStore.delete('user-session', { path: '/' });
-    cookieStore.delete('session-token', { path: '/' });
+    cookieStore.set('user-session', '', { expires: new Date(0), path: '/' });
+    cookieStore.set('session-token', '', { expires: new Date(0), path: '/' });
     
     console.log('✅ All session cookies cleared');
     

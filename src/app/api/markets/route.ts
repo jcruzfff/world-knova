@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       total_pool: 0,
       start_time: new Date().toISOString(),
       end_time: new Date(endDate).toISOString(),
-      status: 'draft',
+      status: 'active',
       resolution_criteria: resolutionCriteria,
       created_by: sessionUser.id,
       image_url: imageUrl || null,

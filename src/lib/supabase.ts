@@ -21,7 +21,7 @@ function validateEnvironmentVariables() {
 }
 
 /**
- * Get Supabase client instance
+ * Get Supabase client instance (anon key)
  */
 export function getSupabaseClient(): SupabaseClient {
   const { supabaseUrl, supabaseAnonKey } = validateEnvironmentVariables();
@@ -31,6 +31,25 @@ export function getSupabaseClient(): SupabaseClient {
   const key = supabaseAnonKey || 'placeholder-key';
   
   return createClient(url, key);
+}
+
+/**
+ * Get Supabase admin client (service role key) for bypassing RLS
+ */
+export function getSupabaseAdminClient(): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error(`Missing Supabase admin environment variables. URL: ${!!supabaseUrl}, Key: ${!!supabaseServiceKey}`);
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
 }
 
 // Storage bucket name for market images
@@ -56,17 +75,9 @@ export async function uploadImage(
   userId: string
 ): Promise<{ url: string; path: string }> {
   try {
-    const client = getSupabaseClient();
+    const client = getSupabaseAdminClient();
     const imagePath = generateImagePath(userId, file.name);
     
-    console.log('📤 Uploading image:', {
-      fileName: file.name,
-      fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-      fileType: file.type,
-      imagePath,
-      userId
-    });
-
     // Upload file to storage
     const { data, error } = await client.storage
       .from(STORAGE_BUCKET)
@@ -85,11 +96,6 @@ export async function uploadImage(
       .from(STORAGE_BUCKET)
       .getPublicUrl(imagePath);
 
-    console.log('✅ Image uploaded successfully:', {
-      path: imagePath,
-      url: publicUrlData.publicUrl
-    });
-
     return {
       url: publicUrlData.publicUrl,
       path: imagePath
@@ -106,7 +112,7 @@ export async function uploadImage(
  */
 export async function deleteImage(imagePath: string): Promise<void> {
   try {
-    const client = getSupabaseClient();
+    const client = getSupabaseAdminClient();
     
     const { error } = await client.storage
       .from(STORAGE_BUCKET)
@@ -116,8 +122,6 @@ export async function deleteImage(imagePath: string): Promise<void> {
       console.error('Supabase delete error:', error);
       throw new Error(`Delete failed: ${error.message}`);
     }
-
-    console.log('✅ Image deleted successfully:', imagePath);
 
   } catch (error) {
     console.error('❌ Image delete error:', error);

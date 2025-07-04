@@ -14,12 +14,30 @@
   --border-color: #373a46;
 }
 
+/* Font loading optimization - Outfit first, minimal fallbacks */
+html {
+  font-family: var(--font-outfit), 'Outfit', sans-serif;
+  font-display: block;
+}
+
 /* Global body styles */
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-outfit), 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-display: swap;
 }
+
+/* Ensure consistent font rendering */
+*,
+*::before,
+*::after {
+  font-family: inherit;
+}
+
+/* Font loading is handled by Next.js font optimization */
 
 /* Hide scrollbars */
 .scrollbar-hide {

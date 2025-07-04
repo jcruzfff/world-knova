@@ -50,7 +50,7 @@ export interface ProfileCompletionState {
 export interface ModalState {
   isOpen: boolean;
   type?: string | null;
-  data?: any | null;
+  data?: Record<string, unknown> | null;
 }
 
 // Toast/notification types
@@ -78,10 +78,10 @@ export interface NavigationState {
 // Search/filter UI state
 export interface SearchState {
   query: string;
-  filters: Record<string, any>;
+  filters: Record<string, string | number | boolean | null>;
   suggestions: string[];
   isSearching: boolean;
-  results: any[];
+  results: unknown[];
   totalCount: number;
 }
 
@@ -99,7 +99,7 @@ export interface ChartDataPoint {
   x: string | number | Date;
   y: number;
   label?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ChartSeries {
@@ -200,7 +200,7 @@ export type WebSocketMessage = MarketUpdate | PredictionUpdate | UserUpdate;
 export interface InfiniteScrollState {
   hasMore: boolean;
   isLoading: boolean;
-  items: any[];
+  items: unknown[];
   page: number;
   error?: string | null;
 }
@@ -267,8 +267,8 @@ export interface MarketCreationStepState {
 // Filter panel state
 export interface FilterPanelState {
   isOpen: boolean;
-  activeFilters: Record<string, any>;
-  tempFilters: Record<string, any>; // For preview before applying
+  activeFilters: Record<string, string | number | boolean | null>;
+  tempFilters: Record<string, string | number | boolean | null>; // For preview before applying
   hasChanges: boolean;
 }
 
@@ -288,7 +288,7 @@ export interface ToastRef {
 export interface FormRef<T> {
   submit: () => Promise<void>;
   reset: () => void;
-  setFieldValue: (field: keyof T, value: any) => void;
+  setFieldValue: (field: keyof T, value: unknown) => void;
   setFieldError: (field: keyof T, error: string) => void;
   validate: () => boolean;
 } 
