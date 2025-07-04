@@ -11,6 +11,21 @@ export const FeaturedMarketCard = ({ market, onClick }: MarketCardProps) => {
   const firstOptionImage = market.options.find(option => option.imageUrl)?.imageUrl;
   const displayImage = firstOptionImage || market.imageUrl;
   
+  // Debug: Log image URLs to help identify issues
+  console.log('🌟 FeaturedMarketCard Debug:', {
+    marketId: market.id,
+    marketTitle: market.title,
+    marketImageUrl: market.imageUrl,
+    optionsWithImages: market.options.filter(option => option.imageUrl).map(option => ({
+      id: option.id,
+      title: option.title,
+      imageUrl: option.imageUrl
+    })),
+    firstOptionImage,
+    displayImage,
+    totalOptions: market.options.length
+  });
+  
   // Truncate question if longer than 12 words
   const truncateQuestion = (question: string, maxWords: number = 12): string => {
     const words = question.split(' ');
@@ -48,9 +63,28 @@ export const FeaturedMarketCard = ({ market, onClick }: MarketCardProps) => {
             alt={market.title}
             fill
             className="object-cover"
+            onError={(e) => {
+              console.warn('⚠️ Failed to load featured market image:', displayImage);
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
           />
         ) : (
-          <div className="w-full h-full bg-[#3e4f6c]" />
+          // Fallback for when no image is available
+          <div className="w-full h-full bg-[#3e4f6c] flex items-center justify-center">
+            <svg 
+              className="w-16 h-16 text-[#52617b]" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={1.5} 
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
+              />
+            </svg>
+          </div>
         )}
         
         {/* Amount Value - Top Left */}

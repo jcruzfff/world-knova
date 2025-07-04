@@ -9,7 +9,7 @@ interface MarketDetailsStepProps {
   onCategoryChange: (category: MarketCategoryFilter) => void;
   options: MarketOption[];
   onOptionChange: (id: string, title: string) => void;
-  onImageUpload: (id: string, file: File) => void;
+  onImageUpload: (id: string, permanentUrl: string) => void;
   onAddOption: () => void;
   onRemoveOption: (id: string) => void;
   onNext: () => void;
@@ -172,8 +172,8 @@ export const MarketDetailsStep: React.FC<MarketDetailsStepProps> = ({
           url: result.data.url
         });
         
-        // Call the parent's onImageUpload with the processed file for storage
-        onImageUpload(optionId, processedFile);
+        // Call the parent's onImageUpload with the permanent URL from Supabase
+        onImageUpload(optionId, result.data.url);
       } else {
         console.error('❌ Image upload failed:', result.error);
         // Clean up on failure

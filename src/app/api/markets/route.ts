@@ -4,11 +4,15 @@ import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('📡 Markets API - GET request received');
+    
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     const status = searchParams.get('status') || 'active';
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
+
+    console.log('📋 Markets API - Request parameters:', { category, status, limit, offset });
 
     // Get markets using Supabase
     const { data: markets, error, count } = await supabaseService.getMarkets({
@@ -19,17 +23,41 @@ export async function GET(request: NextRequest) {
     });
 
     if (error) {
-      console.error('Markets fetch error:', error);
+      console.error('❌ Markets API - Supabase error:', error);
       return NextResponse.json(
         { success: false, message: 'Failed to fetch markets' },
         { status: 500 }
       );
     }
 
+    console.log('✅ Markets API - Markets fetched successfully:', {
+      count: markets?.length || 0,
+      totalCount: count || 0
+    });
+
+    // Debug: Log image information in API response
+    if (markets && markets.length > 0) {
+      console.log('🖼️ Markets API - Image analysis before response:',
+        markets.slice(0, 3).map(market => ({
+          id: market.id,
+          title: market.title?.substring(0, 50) + '...',
+          imageUrl: market.imageUrl,
+          hasImageUrl: !!market.imageUrl,
+          optionsCount: market.options?.length || 0,
+          optionsWithImages: market.options?.filter(option => option.imageUrl).length || 0,
+          sampleOptionImages: market.options?.slice(0, 2).map(option => ({
+            id: option.id,
+            imageUrl: option.imageUrl,
+            hasImage: !!option.imageUrl
+          })) || []
+        }))
+      );
+    }
+
     const totalPages = Math.ceil((count || 0) / limit);
     const currentPage = Math.floor(offset / limit) + 1;
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         markets,
@@ -39,10 +67,20 @@ export async function GET(request: NextRequest) {
         currentPage,
         totalPages,
       },
+    };
+
+    console.log('📤 Markets API - Sending response:', {
+      success: true,
+      marketsCount: markets?.length || 0,
+      totalCount: count || 0,
+      currentPage,
+      totalPages
     });
 
+    return NextResponse.json(response);
+
   } catch (error) {
-    console.error('Markets API error:', error);
+    console.error('❌ Markets API - Unexpected error:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

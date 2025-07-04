@@ -12,6 +12,7 @@ import { Navigation } from '@/components/Navigation';
 import { useSession } from '@/hooks/useSession';
 import { ProfileCompletionWrapper } from '@/components/ProfileCompletion/ProfileCompletionWrapper';
 
+
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useSession();
@@ -138,6 +139,24 @@ export default function HomePage() {
       </div>
     );
   }
+
+  // Debug: Log market data received in HomePage
+  console.log('🏠 HomePage - Market data analysis:', {
+    loading,
+    error: state.error ? String(state.error) : null,
+    marketsCount: state.markets?.length || 0,
+    userLoggedIn: !!user,
+    markets: state.markets?.slice(0, 3).map(market => ({
+      id: market.id,
+      title: market.title?.substring(0, 50) + '...',
+      imageUrl: market.imageUrl,
+      hasImageUrl: !!market.imageUrl,
+      optionsCount: market.options?.length || 0,
+      optionsWithImages: market.options?.filter(option => option.imageUrl).length || 0,
+      status: market.status,
+      category: market.category
+    })) || []
+  });
 
   // Featured markets - empty for now (admin will select these later)
   const featuredMarkets: Market[] = []; // TODO: Admin-selected featured markets
@@ -316,6 +335,8 @@ export default function HomePage() {
           onComplete={handleProfileCompletionComplete}
         />
       )}
+
+
     </>
   );
 } 

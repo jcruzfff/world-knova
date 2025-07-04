@@ -85,14 +85,12 @@ export default function CreateMarketPage() {
     ));
   };
 
-  const handleImageUpload = (id: string, file: File) => {
-    // Create a temporary URL for the image preview
-    const imageUrl = URL.createObjectURL(file);
+  const handleImageUpload = (id: string, permanentUrl: string) => {
+    // Use the permanent Supabase URL directly
     setOptions(options.map(option => 
-      option.id === id ? { ...option, imageUrl } : option
+      option.id === id ? { ...option, imageUrl: permanentUrl } : option
     ));
-    // TODO: Upload to actual storage service
-    console.log('Image upload for option', id, file);
+    console.log('✅ Image URL set for option', id, permanentUrl);
   };
 
   const handleNext = () => {

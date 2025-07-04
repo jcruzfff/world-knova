@@ -34,6 +34,46 @@ export const MarketCard = ({ market, onClick }: MarketCardProps) => {
   const firstOptionImage = market.options.find(option => option.imageUrl)?.imageUrl;
   const displayImage = firstOptionImage || market.imageUrl;
   
+  // Debug: Enhanced image analysis
+  console.log('🖼️ MarketCard Debug - Enhanced analysis:', {
+    marketId: market.id,
+    marketTitle: market.title,
+    
+    // Market-level image
+    marketImageUrl: market.imageUrl,
+    marketImageType: typeof market.imageUrl,
+    marketImageTruthy: !!market.imageUrl,
+    
+    // Options analysis
+    totalOptions: market.options?.length || 0,
+    optionsArray: Array.isArray(market.options),
+    allOptions: market.options?.map(option => ({
+      id: option.id,
+      title: option.title,
+      imageUrl: option.imageUrl,
+      imageType: typeof option.imageUrl,
+      imageTruthy: !!option.imageUrl,
+      orderIndex: option.orderIndex
+    })) || [],
+    
+    // Final display logic
+    firstOptionImage,
+    firstOptionImageType: typeof firstOptionImage,
+    displayImage,
+    displayImageType: typeof displayImage,
+    displayImageTruthy: !!displayImage,
+    
+    // Full market object sample (limited to avoid console spam)
+    marketSample: {
+      id: market.id,
+      title: market.title?.substring(0, 50) + '...',
+      category: market.category,
+      status: market.status,
+      imageUrl: market.imageUrl,
+      optionsCount: market.options?.length
+    }
+  });
+  
   // Truncate question if longer than 12 words
   const truncateQuestion = (question: string, maxWords: number = 12): string => {
     const words = question.split(' ');
@@ -56,13 +96,54 @@ export const MarketCard = ({ market, onClick }: MarketCardProps) => {
         data-layer="Market Image" 
         className="MarketImage w-[155px] h-[155px] left-[230px] top-[13.82px] absolute origin-top-left rotate-[-9.22deg] bg-[#343e4f] rounded-lg opacity-80 z-0"
       >
-        {displayImage && (
+        {displayImage ? (
           <Image 
             src={displayImage} 
             alt={market.title}
             fill
             className="object-cover rounded-lg"
+            onLoad={() => {
+              console.log('✅ MarketCard Image - Successfully loaded:', {
+                marketId: market.id,
+                marketTitle: market.title?.substring(0, 50) + '...',
+                imageUrl: displayImage,
+                source: firstOptionImage ? 'option' : 'market'
+              });
+            }}
+            onError={(e) => {
+              console.error('❌ MarketCard Image - Failed to load:', {
+                marketId: market.id,
+                marketTitle: market.title?.substring(0, 50) + '...',
+                imageUrl: displayImage,
+                source: firstOptionImage ? 'option' : 'market',
+                error: e
+              });
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+            onLoadStart={() => {
+              console.log('🔄 MarketCard Image - Starting to load:', {
+                marketId: market.id,
+                imageUrl: displayImage
+              });
+            }}
           />
+        ) : (
+          // Fallback for when no image is available
+          <div className="w-full h-full bg-[#343e4f] rounded-lg flex items-center justify-center">
+            <svg 
+              className="w-12 h-12 text-[#52617b]" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={1.5} 
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
+              />
+            </svg>
+          </div>
         )}
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-black/40 rounded-lg"></div>

@@ -154,6 +154,8 @@ export class SupabaseService {
     limit?: number;
     offset?: number;
   }): Promise<{ data: Market[]; error: unknown; count: number | null }> {
+    console.log('🔍 SupabaseService.getMarkets - Starting with filters:', filters);
+    
     let query = this.client
       .from('markets')
       .select('*, users!markets_created_by_fkey(id, username, display_name, profile_picture_url)', { count: 'exact' })
@@ -178,8 +180,48 @@ export class SupabaseService {
 
     const { data, error, count } = await query
 
+    console.log('📊 SupabaseService.getMarkets - Raw database response:', {
+      success: !error,
+      count: data?.length || 0,
+      totalCount: count,
+      error: error ? String(error) : null
+    });
+
+    // Debug: Log raw database data for image analysis
+    if (data && data.length > 0) {
+      console.log('🖼️ SupabaseService.getMarkets - Raw database image analysis:',
+        data.slice(0, 3).map(row => ({
+          id: row.id,
+          title: row.title?.substring(0, 50) + '...',
+          image_url: row.image_url,
+          hasImageUrl: !!row.image_url,
+          options: row.options,
+          optionsType: typeof row.options,
+          optionsIsArray: Array.isArray(row.options),
+          rawOptions: row.options ? JSON.stringify(row.options).substring(0, 200) + '...' : null
+        }))
+      );
+    }
+
+    const transformedData = data ? data.map(row => this.transformMarketRow(row)) : [];
+    
+    // Debug: Log transformed data for image analysis
+    if (transformedData.length > 0) {
+      console.log('🔄 SupabaseService.getMarkets - Transformed data image analysis:',
+        transformedData.slice(0, 3).map(market => ({
+          id: market.id,
+          title: market.title?.substring(0, 50) + '...',
+          imageUrl: market.imageUrl,
+          hasImageUrl: !!market.imageUrl,
+          optionsCount: market.options?.length || 0,
+          optionsWithImages: market.options?.filter(option => option.imageUrl).length || 0,
+          firstOptionImage: market.options?.[0]?.imageUrl || null
+        }))
+      );
+    }
+
     return {
-      data: data ? data.map(row => this.transformMarketRow(row)) : [],
+      data: transformedData,
       error,
       count
     }
@@ -451,7 +493,16 @@ export class SupabaseService {
   }
 
   private transformMarketRow(marketRow: MarketRow): Market {
-    return {
+    console.log('🔄 SupabaseService.transformMarketRow - Starting transformation for market:', {
+      id: marketRow.id,
+      title: marketRow.title?.substring(0, 50) + '...',
+      image_url: marketRow.image_url,
+      options_type: typeof marketRow.options,
+      options_is_array: Array.isArray(marketRow.options),
+      options_raw: marketRow.options ? JSON.stringify(marketRow.options).substring(0, 100) + '...' : null
+    });
+
+    const transformedMarket = {
       id: marketRow.id,
       title: marketRow.title,
       description: marketRow.description,
@@ -477,7 +528,24 @@ export class SupabaseService {
       viewCount: marketRow.view_count,
       createdAt: new Date(marketRow.created_at),
       updatedAt: new Date(marketRow.updated_at)
-    }
+    };
+
+    console.log('✅ SupabaseService.transformMarketRow - Transformation complete:', {
+      id: transformedMarket.id,
+      title: transformedMarket.title?.substring(0, 50) + '...',
+      imageUrl: transformedMarket.imageUrl,
+      hasImageUrl: !!transformedMarket.imageUrl,
+      optionsCount: transformedMarket.options?.length || 0,
+      optionsWithImages: transformedMarket.options?.filter(option => option.imageUrl).length || 0,
+      sampleOptions: transformedMarket.options?.slice(0, 2).map(option => ({
+        id: option.id,
+        title: option.title?.substring(0, 30) + '...',
+        imageUrl: option.imageUrl,
+        hasImage: !!option.imageUrl
+      })) || []
+    });
+
+    return transformedMarket;
   }
 
   private transformPredictionRow(predictionRow: PredictionRow): Prediction {

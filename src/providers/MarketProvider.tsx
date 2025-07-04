@@ -114,6 +114,25 @@ function marketReducer(state: MarketState, action: MarketAction): MarketState {
         totalCount: action.payload.totalCount,
         currentPage: action.payload.currentPage
       });
+      
+      // Debug: Log image information for each market
+      console.log('🖼️ MarketReducer - Market image analysis:', 
+        action.payload.markets.map(market => ({
+          id: market.id,
+          title: market.title.substring(0, 50) + '...',
+          imageUrl: market.imageUrl,
+          hasImage: !!market.imageUrl,
+          optionsWithImages: market.options?.filter(option => option.imageUrl).length || 0,
+          totalOptions: market.options?.length || 0,
+          optionsData: market.options?.map(option => ({
+            id: option.id,
+            title: option.title.substring(0, 30) + '...',
+            imageUrl: option.imageUrl,
+            hasImage: !!option.imageUrl
+          })) || []
+        }))
+      );
+      
       return {
         ...state,
         markets: action.payload.markets,
