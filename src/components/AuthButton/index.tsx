@@ -182,7 +182,7 @@ export const AuthButton = ({
   const formatWalletBalance = () => {
     if (balanceLoading) return '...';
     if (!balance) return '$0';
-    return `$${balance.usd.toLocaleString()}`;
+    return `$${(balance.usd || 0).toLocaleString()}`;
   };
 
   // If user is authenticated, show wallet value

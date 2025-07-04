@@ -7,6 +7,7 @@ import { MarketCategoryFilter, Market } from '@/types/market';
 import { AuthButton } from '@/components/AuthButton';
 import { MarketCard } from '@/components/Markets/MarketCard';
 import { FeaturedMarketCard } from '@/components/Markets/FeaturedMarketCard';
+import { MarketDetailSheet } from '@/components/Markets/MarketDetailSheet';
 import { CategoryFilter } from '@/components/Markets/CategoryFilter';
 import { Navigation } from '@/components/Navigation';
 import { useSession } from '@/hooks/useSession';
@@ -21,6 +22,9 @@ export default function HomePage() {
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [showProfileCompletion, setShowProfileCompletion] = useState(false);
   const [profileCompletionDismissed, setProfileCompletionDismissed] = useState(false);
+  // Market detail sheet state
+  const [isMarketSheetOpen, setIsMarketSheetOpen] = useState(false);
+  const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // All useEffect hooks must be before any early returns
@@ -82,8 +86,33 @@ export default function HomePage() {
   }, [activeCardIndex, state.markets.length]);
 
   const handleMarketClick = (marketId: string) => {
-    router.push(`/markets/${marketId}`);
+    console.log('🔍 HomePage - Market click attempted:', {
+      marketId,
+      timestamp: new Date().toISOString()
+    });
+    
+    try {
+      // Find the market in our data
+      const market = state.markets.find(m => m.id === marketId);
+      if (market) {
+        setSelectedMarket(market);
+        setIsMarketSheetOpen(true);
+        console.log('✅ HomePage - Market sheet opened successfully');
+      } else {
+        console.error('❌ HomePage - Market not found:', marketId);
+      }
+    } catch (error) {
+      console.error('❌ HomePage - Market sheet opening failed:', error);
+    }
   };
+
+  // Close market detail sheet
+  const handleCloseMarketSheet = () => {
+    setIsMarketSheetOpen(false);
+    setSelectedMarket(null);
+  };
+
+
 
   const handleCategoryChange = (category: MarketCategoryFilter) => {
     setActiveCategory(category);
@@ -280,6 +309,8 @@ export default function HomePage() {
           />
         </div>
 
+
+
         {/* All Markets Section */}
         <div className="px-[14px] mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -336,6 +367,12 @@ export default function HomePage() {
         />
       )}
 
+      {/* Market Detail Sheet */}
+      <MarketDetailSheet
+        isOpen={isMarketSheetOpen}
+        onCloseAction={handleCloseMarketSheet}
+        market={selectedMarket}
+      />
 
     </>
   );

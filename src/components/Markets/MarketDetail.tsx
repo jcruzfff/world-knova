@@ -1,386 +1,320 @@
 'use client';
 
+/* eslint-disable react/prop-types */
 import { MarketDetailProps } from './types';
-import { CountdownTimer } from './CountdownTimer';
-import { Button } from '@/components/UI';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// import { useRealTimeMarkets } from '@/hooks/useRealTimeMarkets'; // TODO: Enable after smart contracts are implemented
-import { ResolutionCriteria } from './ResolutionCriteria';
-import { OracleInformation } from './OracleInformation';
+import { useSession } from '@/hooks/useSession';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { MarketOption } from '@/types';
+import Image from 'next/image';
 
-
-
-const categoryColors = {
-  sports: 'bg-green-100 text-green-700 border-green-200',
-  music: 'bg-purple-100 text-purple-700 border-purple-200',
-  crypto: 'bg-orange-100 text-orange-700 border-orange-200',
-  user_generated: 'bg-blue-100 text-blue-700 border-blue-200',
-  all: 'bg-blue-100 text-blue-700 border-blue-200'
+// Player icons component for avatars
+const PlayerIcons = ({ count }: { count: number }) => {
+  const displayCount = Math.min(count, 3);
+  const avatars = Array.from({ length: displayCount }, (_, i) => i);
+  
+  return (
+    <div className="flex items-center">
+      <div className="flex -space-x-1">
+        {avatars.map((_, index) => (
+          <div
+            key={index}
+            className="w-6 h-6 bg-[#52617b] rounded-full border-[1.2px] border-[#1d283b]"
+          />
+        ))}
+      </div>
+    </div>
+  );
 };
 
+// Comment component
+interface Comment {
+  id: string;
+  author: string;
+  timeAgo: string;
+  text: string;
+  avatar?: string;
+}
 
-
+const CommentItem = ({ comment }: { comment: Comment }) => (
+  <div className="flex gap-3 py-3">
+    <div className="relative w-8 h-8">
+      <Image 
+        className="rounded-full border-gray-200" 
+        src={comment.avatar || "https://placehold.co/32x32"} 
+        alt={comment.author}
+        width={32}
+        height={32}
+      />
+    </div>
+    <div className="flex-1">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-white text-sm font-semibold">{comment.author}</span>
+        <span className="text-gray-400 text-xs">{comment.timeAgo}</span>
+      </div>
+      <p className="text-gray-300 text-sm leading-tight">{comment.text}</p>
+    </div>
+  </div>
+);
 
 export const MarketDetail = ({ market }: MarketDetailProps) => {
   const router = useRouter();
-  const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null);
-  const [stakeAmount, setStakeAmount] = useState('');
-  const [showPredictionModal, setShowPredictionModal] = useState(false);
-
-  // TODO: Enable real-time updates after smart contracts are implemented
-  // const { 
-  //   markets: [updatedMarket], 
-  //   lastUpdate,
-  //   isConnected 
-  // } = useRealTimeMarkets({ 
-  //   markets: [market], 
-  //   enabled: true 
-  // });
-
-  // Use static market data for now
-  const currentMarket = market;
-  const lastUpdate = null;
-  const isConnected = false;
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const handleMakePrediction = (outcome: string) => {
-    setSelectedOutcome(outcome);
-    setShowPredictionModal(true);
-  };
-
-  const submitPrediction = () => {
-    // This would integrate with your prediction logic
-    console.log('Submitting prediction:', {
-      marketId: market.id,
-      outcome: selectedOutcome,
-      amount: stakeAmount
-    });
-    setShowPredictionModal(false);
-    setSelectedOutcome(null);
-    setStakeAmount('');
-  };
-
-  const handleShare = async () => {
-    const displaySubtitle = currentMarket.description?.substring(0, 100) + '...' || 'No description';
-    const shareData = {
-      title: currentMarket.title,
-      text: `Check out this prediction market on Knova: ${displaySubtitle}`,
-      url: window.location.href,
-    };
-
-    try {
-      // Use native Web Share API if available (mobile devices)
-      if (navigator.share) {
-        await navigator.share(shareData);
-        console.log('Market shared successfully');
-      } else {
-        // Fallback: Copy to clipboard
-        await navigator.clipboard.writeText(`${market.title}\n${shareData.text}\n${shareData.url}`);
-        console.log('Market link copied to clipboard');
-        // You could show a toast notification here
-      }
-    } catch (error: unknown) {
-      // Handle user cancellation silently (this is normal behavior)
-      if (error instanceof Error && (error.name === 'AbortError' || error.message?.includes('cancellation'))) {
-        console.log('📤 Share cancelled by user');
-        return; // Don't show error or fallback for cancellation
-      }
-
-      // Handle permission denied silently (common on desktop)
-      if (error instanceof Error && (error.message?.includes('not allowed') || error.message?.includes('denied'))) {
-        console.log('📋 Share not available, copying to clipboard instead');
-      } else {
-        console.log('📋 Share failed, falling back to clipboard');
-      }
-
-      // Fallback: Copy to clipboard (except for cancellations)
-      try {
-        await navigator.clipboard.writeText(`${market.title}\n${shareData.text}\n${shareData.url}`);
-        console.log('📋 Market link copied to clipboard');
-      } catch {
-        console.log('❌ Both share and clipboard failed');
-      }
+  const { user } = useSession();
+  const { balance } = useWalletBalance(user?.walletAddress);
+  
+  const [comments, setComments] = useState<Comment[]>([
+    {
+      id: '1',
+      author: 'Alex Chen',
+      timeAgo: '2m ago',
+      text: 'Option A looks more professional but Option B has better UX flow. Tough choice!'
+    },
+    {
+      id: '2', 
+      author: 'Sarah Kim',
+      timeAgo: '5m ago',
+      text: 'Going all in on Option A! The color scheme is perfect for the target audience.'
+    },
+    {
+      id: '3',
+      author: 'Mike Rodriguez', 
+      timeAgo: '8m ago',
+      text: 'Option B has more personality. Sometimes bold choices win in the market.'
     }
+  ]);
+  const [newComment, setNewComment] = useState('');
+
+  const handleMakePrediction = async (outcome: string) => {
+    if (!user) {
+      // Handle user authentication
+      console.log('User needs to authenticate');
+      return;
+    }
+    
+    // You could open a prediction modal here or handle inline
+    console.log('Making prediction:', {
+      marketId: market.id,
+      outcome,
+      userId: user.id
+    });
+  };
+
+  const handleAddComment = () => {
+    if (!newComment.trim() || !user) return;
+    
+    const comment: Comment = {
+      id: Date.now().toString(),
+      author: user.username || 'Anonymous',
+      timeAgo: 'now',
+      text: newComment.trim()
+    };
+    
+    setComments(prev => [comment, ...prev]);
+    setNewComment('');
+  };
+
+  // Format countdown timer specifically for the header design
+  const CountdownHeader = () => {
+    const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+
+    useEffect(() => {
+      const updateTimer = () => {
+        const now = new Date().getTime();
+        const end = new Date(market.endTime).getTime();
+        const difference = end - now;
+
+        if (difference > 0) {
+          setTimeLeft({
+            hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+            minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+            seconds: Math.floor((difference % (1000 * 60)) / 1000)
+          });
+        }
+      };
+
+      updateTimer();
+      const interval = setInterval(updateTimer, 1000);
+      return () => clearInterval(interval);
+    }, []);  
+
+    return (
+      <span className="text-center text-[#e9ff74] text-[23px] font-semibold font-['Outfit'] leading-loose">
+        {String(timeLeft.hours).padStart(2, '0')}:
+        {String(timeLeft.minutes).padStart(2, '0')}:
+        {String(timeLeft.seconds).padStart(2, '0')}
+      </span>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Clean Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Left: Back Button */}
-          <button
-            onClick={() => router.push('/')}
-            className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            <span className="text-xl">‹</span>
-          </button>
-          
-          {/* Center: App Name */}
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-lg font-bold text-gray-900">KNOVA</span>
-          </div>
-          
-          {/* Right: Share Button */}
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handleShare}
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
-            >
-              <span className="text-lg">⤴</span>
-            </button>
-          </div>
+    <div className="w-full max-w-[402px] h-screen relative bg-[#0f111a] overflow-hidden mx-auto">
+      {/* Header with back button and wallet */}
+      <div className="flex items-center justify-between px-6 py-4">
+        {/* Back button */}
+        <button
+          onClick={() => router.back()}
+          className="w-[30px] h-[30px] bg-[#131f30] rounded-full flex items-center justify-center"
+        >
+          <svg className="w-6 h-6 text-white rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        {/* Wallet balance */}
+        <div className="bg-white/5 rounded-full border border-[#373a46] px-3 py-1 flex items-center gap-2">
+          <div className="w-4 h-4 border border-white rounded-sm" />
+          <span className="text-[#d0d0d0] text-xs font-normal font-['Outfit']">
+            ${balance?.formatted || '0'}
+          </span>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
-        {/* Market Title Section */}
-        <div className="bg-white px-6 py-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">
-            {currentMarket.title}
-          </h1>
-          {/* Real-time indicator for development */}
-          {process.env.NODE_ENV === 'development' && lastUpdate && (
-            <div className="text-xs text-gray-500 flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
-              Live updates • Last: {(lastUpdate as Date).toLocaleTimeString()}
-            </div>
-          )}
-        </div>
-
-        {/* Hero Section */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-6 py-6">
-            {/* Category and Timer */}
-            <div className="flex justify-between items-center mb-4">
-              <div className={`
-                inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border
-                ${categoryColors[currentMarket.category]}
-              `}>
-                <span className="capitalize">{currentMarket.category}</span>
-              </div>
-              <CountdownTimer endTime={currentMarket.endTime} />
-            </div>
-
-            {/* Subtitle */}
-            <p className="text-gray-600 text-lg mb-6">
-              {currentMarket.description?.substring(0, 200) + '...' || 'No description'}
-            </p>
-
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-xl">
-                <div className="text-2xl font-bold text-gray-900">${currentMarket.totalPool.toLocaleString()}</div>
-                <div className="text-sm text-gray-500">Total Volume</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-xl">
-                <div className="text-2xl font-bold text-gray-900">{currentMarket.participantCount || 0}</div>
-                <div className="text-sm text-gray-500">Participants</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-xl">
-                <div className="text-2xl font-bold text-gray-900">{currentMarket.options.length}</div>
-                <div className="text-sm text-gray-500">Outcomes</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-xl">
-                <div className="text-2xl font-bold text-gray-900">
-                  {currentMarket.creator ? (currentMarket.creator.displayName || currentMarket.creator.username || 'Creator') : 'Anonymous'}
-                </div>
-                <div className="text-sm text-gray-500">Creator</div>
-              </div>
-            </div>
+      {/* Main content container */}
+      <div className="bg-[#1d283a] rounded-t-[34px] h-[calc(100vh-82px)] overflow-hidden">
+        {/* Timer header */}
+        <div className="h-[84px] bg-[#2a3445] relative">
+          <div className="w-[82px] h-[3px] bg-[#6e81a1] absolute top-2 left-1/2 transform -translate-x-1/2 rounded-full" />
+          <div className="absolute top-[22px] left-1/2 transform -translate-x-1/2">
+            <p className="text-[#d0d0d0] text-base font-normal font-['Outfit'] text-center">Time remaining</p>
+          </div>
+          <div className="absolute top-[42px] left-1/2 transform -translate-x-1/2">
+            <CountdownHeader />
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-3 gap-6 p-6">
-          {/* Left Column - Market Details */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Description */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Market Description</h2>
-              <p className="text-gray-700 leading-relaxed">
-                {market.description || 'No description available'}
-              </p>
-              
-              {/* Tags */}
-              {market.tags && market.tags.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Tags</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {market.tags.map((tag, index) => (
-                      <span 
-                        key={index}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                      >
-                        #{tag}
+        {/* Market question */}
+        <div className="px-4 py-6">
+          <h1 className="text-white text-[23px] font-semibold font-['Outfit'] leading-loose">
+            {market.title}
+          </h1>
+        </div>
+
+        {/* Options grid */}
+        <div className="px-4 mb-4">
+          <div className="grid grid-cols-2 gap-3">
+            {market.options.slice(0, 2).map((option: MarketOption) => (
+              <div key={option.id} className="relative">
+                {/* Option image or placeholder */}
+                <div className="w-full h-[181px] bg-[#343e4f] rounded-t-[14px] overflow-hidden">
+                  {option.imageUrl ? (
+                    <div className="relative w-full h-full">
+                      <Image 
+                        src={option.imageUrl} 
+                        alt={option.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-[#6e81a1] text-lg font-medium">
+                        {option.title}
                       </span>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-
-            {/* Rules & Resolution */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Rules & Resolution</h2>
-              
-              {market.resolutionCriteria && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Resolution Criteria</h3>
-                  <div className="text-gray-700 leading-relaxed">
-                    {market.resolutionCriteria}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Resolution Source:</span>
-                  <span className="text-gray-900 font-medium">
-                    {market.oracleSource || 'Manual verification'}
+                
+                {/* Option button */}
+                <button
+                  onClick={() => handleMakePrediction(option.title)}
+                  className="w-full h-9 bg-[#e9ff74] rounded-b-[14px] flex items-center justify-center hover:bg-[#d4e866] transition-colors"
+                >
+                  <span className="text-black text-base font-semibold font-['Outfit']">
+                    {option.title}
                   </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Market Ends:</span>
-                  <span className="text-gray-900 font-medium">
-                    {formatDate(market.endTime)}
-                  </span>
-                </div>
-                {market.createdAt && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Created:</span>
-                    <span className="text-gray-900 font-medium">
-                      {formatDate(market.createdAt)}
+                </button>
+                
+                {/* Option description */}
+                {option.description && (
+                  <div className="mt-2 text-center">
+                    <span className="text-white text-base font-semibold font-['Outfit']">
+                      {option.description}
                     </span>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Resolution Criteria */}
-            <ResolutionCriteria market={currentMarket} />
-
-            {/* Oracle Information */}
-            <OracleInformation market={currentMarket} />
+            ))}
           </div>
+        </div>
 
-          {/* Right Column - Prediction Interface */}
-          <div className="space-y-6">
-            {/* Outcomes */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Make Prediction</h2>
-              
-              <div className="space-y-3">
-                {market.options.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleMakePrediction(option.title)}
-                    className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 text-left group"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="font-semibold text-gray-900 group-hover:text-blue-700">
-                          {option.title}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {option.percentage || 50}% probability
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-blue-600">
-                          {option.odds || 2.0}x
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          multiplier
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+        {/* Bottom content with stats and comments */}
+        <div className="bg-[#0f111a] rounded-t-[36px] h-full px-4 py-6">
+          {/* Stats section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              {/* Total Pool */}
+              <div>
+                <p className="text-[#d0d0d0] text-base font-normal font-['Outfit'] mb-1">Total Pool</p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-4 border border-white rounded-sm" />
+                  <span className="text-white text-[23px] font-semibold font-['Outfit'] leading-loose">
+                    ${market.totalPool?.toLocaleString() || '0'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Players */}
+              <div className="text-right">
+                <p className="text-[#d0d0d0] text-base font-normal font-['Outfit'] mb-1">Players</p>
+                <div className="flex items-center gap-1.5 justify-end">
+                  <PlayerIcons count={market.participantCount || 0} />
+                  <span className="text-white text-[23px] font-semibold font-['Outfit'] leading-loose">
+                    {market.participantCount || 0}
+                  </span>
+                </div>
               </div>
             </div>
+            
+            <div className="border-t border-[#343e4f]/20 pt-6">
+              {/* Comments header */}
+              <h2 className="text-white text-lg font-semibold font-['Roboto'] leading-7 mb-4">
+                Comments ({comments.length})
+              </h2>
 
-            {/* Quick Stats */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Market Activity</h3>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Most Popular</span>
-                  <span className="font-semibold text-gray-900">
-                    {market.options[0]?.title || 'N/A'}
-                  </span>
+              {/* Comment input */}
+              <div className="bg-[#22273c] rounded-[20px] p-3 mb-6 flex items-center gap-3">
+                <div className="relative w-8 h-8">
+                  <Image 
+                    className="rounded-full border-gray-200" 
+                    src={user?.profilePictureUrl || "https://placehold.co/32x32"} 
+                    alt="Your avatar"
+                    width={32}
+                    height={32}
+                  />
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Best Odds</span>
-                  <span className="font-semibold text-blue-600">
-                    {Math.max(...market.options.map(o => o.odds || 2.0))}x
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Time Left</span>
-                  <CountdownTimer endTime={market.endTime} compact />
-                </div>
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="flex-1 bg-transparent text-[#adaebc] text-base font-normal font-['Roboto'] outline-none placeholder:text-[#6e81a1]"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                />
+                <button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim()}
+                  className="w-4 h-4 flex items-center justify-center"
+                >
+                  <div className="w-4 h-4 bg-[#e9ff74] rounded" />
+                </button>
+              </div>
+
+              {/* Comments list */}
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {comments.map((comment) => (
+                  <CommentItem key={comment.id} comment={comment} />
+                ))}
+                
+                {/* Load more comments button */}
+                <button className="w-full py-2 text-center text-blue-400 text-sm font-normal font-['Roboto']">
+                  Load more comments
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Prediction Modal */}
-      {showPredictionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
-              Place Prediction: {selectedOutcome}
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Stake Amount (WLD)
-                </label>
-                <input
-                  type="number"
-                  value={stakeAmount}
-                  onChange={(e) => setStakeAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowPredictionModal(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={submitPrediction}
-                  disabled={!stakeAmount || parseFloat(stakeAmount) <= 0}
-                  className="flex-1"
-                >
-                  Confirm
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }; 
