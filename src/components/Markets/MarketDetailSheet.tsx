@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { Market, MarketOption } from '@/types';
+import { PredictionData } from './types';
 import Image from 'next/image';
+import { PredictionWagerOverlay } from './PredictionWagerOverlay';
 
 interface MarketDetailSheetProps {
   isOpen: boolean;
@@ -30,41 +32,69 @@ const PlayerIcons = ({ count }: { count: number }) => {
   );
 };
 
-// Comment component
+// Comment component with database integration
 interface Comment {
   id: string;
+  marketId: string;
+  userId: string;
+  content: string;
   author: string;
+  avatar?: string | null;
   timeAgo: string;
-  text: string;
-  avatar?: string;
+  createdAt: Date;
 }
+
+// Avatar component with fallback to first letter
+const CommentAvatar = ({ avatar, author }: { avatar?: string | null; author: string }) => {
+  if (avatar) {
+    return (
+      <Image 
+        className="rounded-full border-gray-200" 
+        src={avatar} 
+        alt={author}
+        width={32}
+        height={32}
+      />
+    );
+  }
+  
+  // Fallback to first letter of username
+  const firstLetter = author.charAt(0).toUpperCase();
+  return (
+    <div className="w-8 h-8 rounded-full bg-[#6e81a1] flex items-center justify-center">
+      <span className="text-white text-sm font-semibold">{firstLetter}</span>
+    </div>
+  );
+};
 
 const CommentItem = ({ comment }: { comment: Comment }) => (
   <div className="flex gap-3 py-3">
     <div className="relative w-8 h-8">
-      <Image 
-        className="rounded-full border-gray-200" 
-        src={comment.avatar || "https://placehold.co/32x32"} 
-        alt={comment.author}
-        width={32}
-        height={32}
-      />
+      <CommentAvatar avatar={comment.avatar} author={comment.author} />
     </div>
     <div className="flex-1">
       <div className="flex items-center gap-2 mb-1">
         <span className="text-white text-sm font-semibold">{comment.author}</span>
         <span className="text-gray-400 text-xs">{comment.timeAgo}</span>
       </div>
-      <p className="text-gray-300 text-sm leading-tight">{comment.text}</p>
+      <p className="text-gray-300 text-sm leading-tight">{comment.content}</p>
     </div>
   </div>
 );
 
-export const MarketDetailSheet = ({ isOpen, onCloseAction, market }: MarketDetailSheetProps) => {
+export const MarketDetailSheet = ({ isOpen, onCloseAction, market: initialMarket }: MarketDetailSheetProps) => {
   const { user } = useSession();
   const sheetRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   
+  // Local market state to handle updates
+  const [market, setMarket] = useState<Market | null>(initialMarket);
+  
+  // Update local market when prop changes
+  useEffect(() => {
+    setMarket(initialMarket);
+  }, [initialMarket]);
+
   // Touch handling for swipe-to-close - improved implementation
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
@@ -158,55 +188,129 @@ export const MarketDetailSheet = ({ isOpen, onCloseAction, market }: MarketDetai
     }
   };
   
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: '1',
-      author: 'Alex Chen',
-      timeAgo: '2m ago',
-      text: 'Option A looks more professional but Option B has better UX flow. Tough choice!'
-    },
-    {
-      id: '2', 
-      author: 'Sarah Kim',
-      timeAgo: '5m ago',
-      text: 'Going all in on Option A! The color scheme is perfect for the target audience.'
-    },
-    {
-      id: '3',
-      author: 'Mike Rodriguez', 
-      timeAgo: '8m ago',
-      text: 'Option B has more personality. Sometimes bold choices win in the market.'
-    }
-  ]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+  
+  // Wagering overlay state
+  const [isWagerOverlayOpen, setIsWagerOverlayOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [selectedOptionData, setSelectedOptionData] = useState<MarketOption | null>(null);
 
-  const handleMakePrediction = async (outcome: string) => {
+  const fetchComments = useCallback(async () => {
+    if (!market?.id) return;
+    
+    setIsLoadingComments(true);
+    setCommentsError(null);
+    
+    try {
+      const response = await fetch(`/api/markets/${market.id}/comments`);
+      
+      if (!response.ok) {
+        // If it's a 404 or server error, just show empty comments
+        console.log('Comments API not available, showing empty state');
+        setComments([]);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setComments(data.data.comments || []);
+      } else {
+        // Don't show error for missing comments, just show empty state
+        console.log('No comments available:', data.error);
+        setComments([]);
+      }
+    } catch (error) {
+      // Network or parsing errors - just show empty state instead of error
+      console.log('Comment fetching failed, showing empty state:', error);
+      setComments([]);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  }, [market?.id]);
+
+  // Fetch comments when market changes or sheet opens
+  useEffect(() => {
+    if (isOpen && market?.id) {
+      fetchComments();
+    }
+  }, [isOpen, market?.id, fetchComments]);
+
+  const handleMakePrediction = (optionTitle: string) => {
     if (!user) {
-      // Handle user authentication
+      // Handle user authentication - could show auth modal
       console.log('User needs to authenticate');
       return;
     }
     
-    // You could open a prediction modal here or handle inline
-    console.log('Making prediction:', {
-      marketId: market?.id,
-      outcome,
-      userId: user.id
-    });
+    // Find the full option data
+    const optionData = market?.options.find(opt => opt.title === optionTitle);
+    
+    setSelectedOption(optionTitle);
+    setSelectedOptionData(optionData || null);
+    setIsWagerOverlayOpen(true);
   };
 
-  const handleAddComment = () => {
-    if (!newComment.trim() || !user) return;
+  const handleCloseWagerOverlay = () => {
+    setIsWagerOverlayOpen(false);
+    setSelectedOption(null);
+    setSelectedOptionData(null);
+  };
+
+  // Handle prediction submission - update market stats
+  const handlePredictionMade = useCallback((predictionData: PredictionData) => {
+    if (!market) return;
     
-    const comment: Comment = {
-      id: Date.now().toString(),
-      author: user.username || 'Anonymous',
-      timeAgo: 'now',
-      text: newComment.trim()
-    };
+    console.log('Prediction made:', predictionData);
     
-    setComments(prev => [comment, ...prev]);
-    setNewComment('');
+    // Update market state optimistically
+    setMarket(prevMarket => {
+      if (!prevMarket) return prevMarket;
+      
+      return {
+        ...prevMarket,
+        totalPool: prevMarket.totalPool + predictionData.stake,
+        participantCount: prevMarket.participantCount + 1, // Increment by 1 for each prediction
+      };
+    });
+  }, [market]);
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !user || !market?.id || isSubmittingComment) return;
+    
+    setIsSubmittingComment(true);
+    
+    try {
+      const response = await fetch(`/api/markets/${market.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: newComment.trim()
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Add the new comment to the beginning of the list
+        setComments(prev => [data.data.comment, ...prev]);
+        setNewComment('');
+        setCommentsError(null);
+      } else {
+        setCommentsError(data.error || 'Failed to post comment');
+      }
+    } catch (error) {
+      console.error('Error posting comment:', error);
+      setCommentsError('Failed to post comment');
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   // Simple countdown timer - will be replaced with smart contract logic
@@ -317,11 +421,14 @@ export const MarketDetailSheet = ({ isOpen, onCloseAction, market }: MarketDetai
 
             {/* Options grid */}
             <div className="px-4 mb-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 {market.options.slice(0, 2).map((option: MarketOption) => (
-                  <div key={option.id} className="relative">
-                    {/* Option image or placeholder */}
-                    <div className="w-full h-[181px] bg-[#343e4f] rounded-t-[14px] overflow-hidden">
+                  <div key={option.id} className="relative flex flex-col">
+                    {/* Option image or placeholder - clickable */}
+                    <div 
+                      className="w-full h-[181px] bg-[#343e4f] rounded-t-[14px] overflow-hidden cursor-pointer hover:bg-[#3a4553] transition-colors"
+                      onClick={() => handleMakePrediction(option.title)}
+                    >
                       {option.imageUrl ? (
                         <div className="relative w-full h-full">
                           <Image 
@@ -340,31 +447,22 @@ export const MarketDetailSheet = ({ isOpen, onCloseAction, market }: MarketDetai
                       )}
                     </div>
                     
-                    {/* Option button */}
+                    {/* Option button - consistent height with text wrapping */}
                     <button
                       onClick={() => handleMakePrediction(option.title)}
-                      className="w-full h-9 bg-[#e9ff74] rounded-b-[14px] flex items-center justify-center hover:bg-[#d4e866] transition-colors"
+                      className="w-full min-h-[44px] bg-[#e9ff74] rounded-b-[14px] flex items-center justify-center hover:bg-[#d4e866] transition-colors px-2 py-2"
                     >
-                      <span className="text-black text-base font-semibold font-['Outfit']">
+                      <span className="text-black text-base font-semibold font-['Outfit'] text-center leading-tight">
                         {option.title}
                       </span>
                     </button>
-                    
-                    {/* Option description */}
-                    {option.description && (
-                      <div className="mt-2 text-center">
-                        <span className="text-white text-base font-semibold font-['Outfit']">
-                          {option.description}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Bottom content with stats and comments */}
-            <div className="bg-[#0f111a] px-4 py-6">
+            <div className="bg-[#0f111a] px-4 py-6 border-t border-[#343e4f]/20 ">
               {/* Stats section */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
@@ -372,9 +470,17 @@ export const MarketDetailSheet = ({ isOpen, onCloseAction, market }: MarketDetai
                   <div>
                     <p className="text-[#d0d0d0] text-base font-normal font-['Outfit'] mb-1">Total Pool</p>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 border border-white rounded-sm" />
+                      <div className="w-4 h-4 relative">
+                        <Image 
+                          src="/world-icon.svg" 
+                          alt="World Currency"
+                          width={16}
+                          height={16}
+                          className="w-full h-full"
+                        />
+                      </div>
                       <span className="text-white text-[23px] font-semibold font-['Outfit'] leading-loose">
-                        ${market.totalPool?.toLocaleString() || '0'}
+                        {market.totalPool?.toLocaleString() || '0'}
                       </span>
                     </div>
                   </div>
@@ -398,43 +504,67 @@ export const MarketDetailSheet = ({ isOpen, onCloseAction, market }: MarketDetai
                   </h2>
 
                   {/* Comment input */}
-                  <div className="bg-[#22273c] rounded-[20px] p-3 mb-6 flex items-center gap-3">
+                  <div className="bg-[#22273c] rounded-[20px] p-3 mb-6 flex items-center gap-3 pr-4">
                     <div className="relative w-8 h-8">
-                      <Image 
-                        className="rounded-full border-gray-200" 
-                        src={user?.profilePictureUrl || "https://placehold.co/32x32"} 
-                        alt="Your avatar"
-                        width={32}
-                        height={32}
-                      />
+                      {user && (
+                        <CommentAvatar 
+                          avatar={user.profilePictureUrl} 
+                          author={user.username || 'You'} 
+                        />
+                      )}
                     </div>
                     <input
                       type="text"
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Add a comment..."
-                      className="flex-1 bg-transparent text-[#adaebc] text-base font-normal font-['Roboto'] outline-none placeholder:text-[#6e81a1]"
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                      placeholder={user ? "Add a comment..." : "Sign in to comment"}
+                      className="flex-1 bg-transparent text-[#adaebc] text-base font-normal font-['Roboto'] outline-none placeholder:text-[#6e81a1] caret-white"
+                      onKeyPress={(e) => e.key === 'Enter' && !isSubmittingComment && handleAddComment()}
+                      disabled={!user || isSubmittingComment}
+                      maxLength={500}
                     />
                     <button
                       onClick={handleAddComment}
-                      disabled={!newComment.trim()}
-                      className="w-4 h-4 flex items-center justify-center"
+                      disabled={!newComment.trim() || !user || isSubmittingComment}
+                      className="w-6 h-6 flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-40"
                     >
-                      <div className="w-4 h-4 bg-[#e9ff74] rounded" />
+                      {isSubmittingComment ? (
+                        <div className="w-6 h-6 rounded-full animate-spin" />
+                      ) : (
+                        <Image 
+                          src="/send-icon.svg" 
+                          alt="Send comment"
+                          width={24}
+                          height={24}
+                          className="w-6 h-6"
+                        />
+                      )}
                     </button>
                   </div>
 
+                  {/* Error message */}
+                  {commentsError && (
+                    <div className="mb-4 p-3 bg-red-900/20 border border-red-600/30 rounded-lg">
+                      <p className="text-red-400 text-sm">{commentsError}</p>
+                    </div>
+                  )}
+
                   {/* Comments list */}
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {comments.map((comment) => (
-                      <CommentItem key={comment.id} comment={comment} />
-                    ))}
-                    
-                    {/* Load more comments button */}
-                    <button className="w-full py-2 text-center text-blue-400 text-sm font-normal font-['Roboto']">
-                      Load more comments
-                    </button>
+                    {isLoadingComments ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block w-6 h-6 border-2 border-[#6e81a1] border-t-transparent rounded-full animate-spin mb-2" />
+                        <p className="text-gray-400">Loading comments...</p>
+                      </div>
+                    ) : comments.length > 0 ? (
+                      comments.map((comment) => (
+                        <CommentItem key={comment.id} comment={comment} />
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-400">
+                        <p>No comments yet. Be the first to share your thoughts!</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -442,6 +572,16 @@ export const MarketDetailSheet = ({ isOpen, onCloseAction, market }: MarketDetai
           </div>
         </div>
       </div>
+
+      {/* Wagering Overlay */}
+      <PredictionWagerOverlay
+        isOpen={isWagerOverlayOpen}
+        onCloseAction={handleCloseWagerOverlay}
+        market={market}
+        selectedOption={selectedOption}
+        selectedOptionData={selectedOptionData}
+        onPredictionMade={handlePredictionMade}
+      />
     </>
   );
 }; 
